@@ -5,13 +5,16 @@ import logging
 import asyncio
 
 from slixmpp import ClientXMPP
+from slixmpp.xmlstream import ElementBase, ET, register_stanza_plugin
 
 import config
 
 class XmppInterface(ClientXMPP):
 
-    def __init__(self, jid, password):
+    def __init__(self, jid, password, data_connect_proxy):
         ClientXMPP.__init__(self, jid, password)
+
+        self.data_connect_proxy = data_connect_proxy
 
         self.add_event_handler("session_start", self.session_start)
         self.add_event_handler("message", self.message)
@@ -40,10 +43,10 @@ class XmppInterface(ClientXMPP):
         # If using a component, may also pass jid keyword parameter.
 
         self['xep_0050'].add_command(node='authorize',
-                                     name='Authorize',
-                                     handler=self._handle_command)
+                                     name='Request authorize URI',
+                                     handler=self.handle_authorize_command)
 
-    def _handle_command(self, iq, session):
+    def handle_authorize_command(self, iq, session):
         """
         Respond to the initial request for a command.
         Arguments:
@@ -52,26 +55,27 @@ class XmppInterface(ClientXMPP):
                        session. Additional, custom data may be saved
                        here to persist across handler callbacks.
         """
-        form = self['xep_0004'].make_form('form', 'Greeting')
-        form['instructions'] = 'Send a custom greeting to a JID'
-        form.addField(var='redirrect_uri',
+        form = self['xep_0004'].make_form(ftype='form')
+        form['instructions'] = 'Request authorize URI'
+        form.addField(var='redirect_uri',
                       ftype='text-single',
-                      label='Adresse vers laquelle l‘utilisateur sera redirigé après avoir exprimé son consentement',
-                      value='https://cyril.lu/dataconnect-proxy/redirect')
-
-        form.addField(var='state',
-                      ftype='text-single',
-                      label='Sera ajouté en paramètre à l’adresse de redirection pour maintenir l’état entre la requête et la redirection',
+                      label='Adresse de redirection après consentement',
                       value='')
 
-        form.addField(var='state',
+        form.addField(var='duration',
                       ftype='text-single',
-                      label='Durée pendant laquelle l’application souhaite accéder aux données du client, au format ISO 8601, ne peut excéder 3 ans',
+                      label='Durée de l’autorisation',
                       value='P1Y')
 
+        form.addField(var='state',
+                      ftype='text-single',
+                      label='Données associées',
+                      value='')
+
         session['payload'] = form
-        session['next'] = self._handle_command_complete
-        session['has_next'] = False
+        session['next'] = self.handle_make_authorize_url
+        session['has_next'] = True
+        # session['allow_complete'] = False
 
         # Other useful session values:
         # session['to']                    -- The JID that received the
@@ -90,7 +94,8 @@ class XmppInterface(ClientXMPP):
 
         return session
 
-    def _handle_command_complete(self, payload, session):
+    def handle_make_authorize_url(self, payload, session):
+
         """
         Process a command result from the user.
         Arguments:
@@ -105,23 +110,51 @@ class XmppInterface(ClientXMPP):
         """
 
         # In this case (as is typical), the payload is a form
-        form = payload
 
-        greeting = form['values']['greeting']
+        redirect_uri = payload['values']['redirect_uri']
+        duration = payload['values']['duration']
+        state = payload['values']['state']
 
-        self.send_message(mto=session['from'],
-                          mbody="%s, World!" % greeting,
-                          mtype='chat')
+        print(session['from'])
+        print(type(session['from']))
 
-        # Having no return statement is the same as unsetting the 'payload'
-        # and 'next' session values and returning the session.
+        authorize_uri = self.data_connect_proxy.register_authorize_request(redirect_uri, duration, session['from'].bare, state)
 
-        # Unless it is the final step, always return the session dictionary.
+        form = self['xep_0004'].make_form(ftype='submit')
+        form['instructions'] = 'Request authorize URI'
+        form.addField(var='authorize_uri',
+                      ftype='text-single',
+                      label='Adresse pour recueillir le consentement',
+                      value=authorize_uri)
 
-        session['payload'] = None
-        session['next'] = None
+        session['payload'] = form
+
+        session['next'] = self.handle_command_complete
+        session['has_next'] = False
+        session['allow_complete'] = True
 
         return session
+
+    def handle_command_complete(self, payload, session):
+        session['payload'] = None
+        session['next'] = None
+        return session
+
+    def notify_authorize_complete(self, dest, usage_points):
+
+        msg = self.make_message(mto=dest, mfrom=self.boundjid.full, mtype="chat")
+
+        body = ET.Element('body')
+        body.text = f'Access granted for usage points {", ".join(usage_points)}'
+
+        x = ET.Element('x', xmlns="https://consometers.org/dataconnect#authorize")
+
+        for usage_point in usage_points:
+            x.append(ET.Element('usage-point', id=usage_point))
+
+        msg.append(body)
+        msg.append(x)
+        msg.send()
 
     def message(self, msg):
         if not msg['type'] in ('chat', 'normal'):

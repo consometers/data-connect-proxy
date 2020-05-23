@@ -1,0 +1,6 @@
+slixmpp
+Flask
+requests
+
+# Used for flask adhoc ssl
+pyopenssl
