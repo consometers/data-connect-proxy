@@ -48,7 +48,7 @@ class XmppInterface(ClientXMPP):
                                      name='Get consumption load curve',
                                      handler=self.consumption_load_curve_handler.handle_request)
 
-    def notify_authorize_complete(self, dest, usage_points):
+    def notify_authorize_complete(self, dest, usage_points, state):
 
         msg = self.make_message(mto=dest, mtype="chat")
 
@@ -58,7 +58,13 @@ class XmppInterface(ClientXMPP):
         x = ET.Element('x', xmlns="https://consometers.org/dataconnect#authorize")
 
         for usage_point in usage_points:
-            x.append(ET.Element('usage-point', id=usage_point))
+            usage_point_element = ET.Element('usage-point')
+            usage_point_element.text = usage_point
+            x.append(usage_point_element)
+
+        state_element = ET.Element('state')
+        state_element.text = state
+        x.append(state_element)
 
         msg.append(body)
         msg.append(x)
@@ -90,6 +96,9 @@ class AuthorizeUriCommandHandler:
         self.make_authorize_uri = make_authorize_uri
 
     def handle_request(self, iq, session):
+
+        if iq['command']['action'] == "complete":
+            return self.handle_submit(session['payload'], session)
 
         form = self.xmpp['xep_0004'].make_form(ftype='form', title='Request authorize URI')
 
@@ -156,6 +165,9 @@ class ConsumptionLoadCurveCommandHandler:
         self.get_consumption_load_curve = get_consumption_load_curve
 
     def handle_request(self, iq, session):
+
+        if iq['command']['action'] == "complete":
+            return self.handle_submit(session['payload'], session)
 
         form = self.xmpp['xep_0004'].make_form(ftype='form', title='Get consumption load curve data')
 

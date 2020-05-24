@@ -45,7 +45,7 @@ class Tokens:
 
     def set(self, access_token, refresh_token, expires_in, idx=None):
         if idx is None:
-            idx = len(self.data)
+            idx = str(len(self.data))
         expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_in))
         expires_at = expires_at.strftime('%Y-%m-%d %H:%M:%S')
         self.data[idx] = {
@@ -53,7 +53,7 @@ class Tokens:
             'refresh_token': refresh_token,
             'expires_at': expires_at
         }
-        return str(idx)
+        return idx
 
     def get(self, idx):
         value = self.data.get(idx).copy()
@@ -122,7 +122,7 @@ class DataConnectProxy:
         for usage_point in usage_points:
             self.usage_points.set(jid, usage_point, token_id)
 
-        self.xmpp_interface.notify_authorize_complete(jid, usage_points)
+        self.xmpp_interface.notify_authorize_complete(jid, usage_points, authorize_request['state'])
 
         return {
             'user': jid,
