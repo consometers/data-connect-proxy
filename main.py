@@ -4,6 +4,7 @@ import uuid
 import logging
 import json
 import os
+import asyncio
 
 import threading
 import datetime as dt
@@ -129,17 +130,16 @@ class DataConnectProxy:
             'usage_points': usage_points
         }
 
+    # TODO throw DataConnectProxyErrors
     def get_access_token(self, jid, usage_point_id):
 
         user_usage_points = self.usage_points.get(jid)
         if not user_usage_points:
-            return None # TODO throw
+            raise DataConnectError(f'User {jid} is not allowed to access {usage_point_id}')
 
         token_id = user_usage_points.get(usage_point_id)
         if not token_id:
-            return None # TODO throw
-
-        print(token_id)
+            raise DataConnectError(f'User {jid} is not allowed to access {usage_point_id}')
 
         token = self.tokens.get(token_id)
 
@@ -168,26 +168,33 @@ if __name__ == '__main__':
 
     proxy = DataConnectProxy(data_connect)
 
-    print(proxy.get_consumption_load_curve('cyril_lugan@liberasys.com', '22516914714270', '2020-05-01', '2020-05-02'))
-
     # Ideally use optparse or argparse to get JID,
     # password, and log level.
 
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)-8s %(message)s')
 
-    xmpp = XmppInterface(config.XMPP_JID, config.XMPP_PASSWORD, proxy)
+    xmpp = XmppInterface(config.XMPP_JID, config.XMPP_PASSWORD,
+                         proxy.register_authorize_request,
+                         proxy.get_consumption_load_curve)
 
     proxy.xmpp_interface = xmpp # TODO this is ugly
+    web_interface.data_connect_proxy = proxy # TODO this is ugly
+
+    # I don't really understand what is going on with asyncio
+    # Got web + xmpp example on
+    # https://gitlab.collabora.com/sysadmin/csp-reports-bot/-/blob/master/csp.py
+
+    loop = asyncio.get_event_loop()
+    http = loop.run_until_complete(
+        web_interface.start_app(),
+    )
 
     xmpp.connect()
-
-    xmpp_processing = threading.Thread(target=xmpp.process)
-    xmpp_processing.start()
-
-    web_interface.data_connect_proxy = proxy # TODO this is ugly
-    web_interface.app.run(host='0.0.0.0', port=443, ssl_context='adhoc')
-
-    proxy.save_state()
-
-    xmpp.disconnect()
+    try:
+        xmpp.process()
+    except KeyboardInterrupt:
+        xmpp.disconnect()
+        xmpp.process(forever=False)
+    finally:
+        proxy.save_state()
