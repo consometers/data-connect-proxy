@@ -1,6 +1,9 @@
 import requests
 import urllib
 
+import datetime as dt
+import pytz
+
 class DataConnectError(Exception):
     pass
 
@@ -19,14 +22,17 @@ class DataConnect():
             self.authorize_endpoint = "https://mon-compte-particulier.enedis.fr"
             self.api_endpoint = "https://gw.prd.api.enedis.fr"
 
-    def make_authorize_url(self, duration, state = ""):
+    def make_authorize_url(self, duration, state=None):
 
         params = {
             'client_id': self.client_id,
             'response_type': 'code',
-            'state': state,
             'duration': duration
         }
+
+        if state is not None:
+            params['state'] = state
+
         params = urllib.parse.urlencode(params)
 
         return self.authorize_endpoint + '/dataconnect/v1/oauth2/authorize?' + params
@@ -35,9 +41,6 @@ class DataConnect():
 
         params = {'redirect_uri': self.redirect_uri }
         payload = {'client_id': self.client_id, 'client_secret': self.client_secret }
-
-        print(params)
-        print(payload)
 
         if code is not None and refresh_token is None:
             payload['grant_type'] = 'authorization_code'
@@ -56,6 +59,9 @@ class DataConnect():
 
     def get_consumption_load_curve(self, usage_point_id, start_date, end_date, access_token):
 
+        start_date = self.date_to_isostring(start_date)
+        end_date = self.date_to_isostring(end_date)
+
         params = {
             'usage_point_id': usage_point_id,
             'start': start_date,
@@ -69,3 +75,66 @@ class DataConnect():
             return r.json()
         else:
             raise DataConnectError(r.text)
+
+    @staticmethod
+    def date_to_isostring(date):
+        if isinstance(date, dt.date):
+            return date.strftime('%Y-%m-%d')
+        if isinstance(date, str):
+            return date
+
+        raise ValueError(f"Unknown date object: {date}")
+
+    @staticmethod
+    def date(date, half_hour_id=None):
+        date = dt.datetime.strptime(date, '%Y-%m-%d') + dt.timedelta()
+
+        if half_hour_id is not None:
+            date = date + dt.timedelta(minutes=30*int(half_hour_id))
+
+        paris_tz = pytz.timezone('Europe/Paris')
+        date = paris_tz.localize(date)
+        return date
+
+        #print(paris_tz.localize(date).astimezone(pytz.utc).strftime("%s"))
+
+if __name__ == '__main__':
+
+    import unittest
+
+    class TestDataConnect(unittest.TestCase):
+
+        def test_date_is_parsed_from_iso_format(self):
+            date = DataConnect.date('2020-05-22')
+            self.assertEqual(date.year, 2020)
+            self.assertEqual(date.month, 5)
+            self.assertEqual(date.day, 22)
+            self.assertEqual(date.hour, 0)
+            self.assertEqual(date.minute, 0)
+            self.assertEqual(date.second, 0)
+
+        def test_date_is_defined_at_paris_time(self):
+            date = DataConnect.date('2020-05-22')
+            self.assertEqual(date.utcoffset(), dt.timedelta(hours=2))
+
+        def test_date_half_hour_ids(self):
+            date = DataConnect.date('2020-05-22', half_hour_id=1)
+            self.assertEqual(date.hour, 0)
+            self.assertEqual(date.minute, 30)
+
+            date = DataConnect.date('2020-05-22', half_hour_id=48)
+            self.assertEqual(date.day, 23)
+            self.assertEqual(date.hour, 0)
+            self.assertEqual(date.minute, 0)
+
+        def test_date_to_isostring(self):
+            date = DataConnect.date_to_isostring('2020-05-22')
+            self.assertEqual(date, '2020-05-22')
+
+            date = DataConnect.date_to_isostring(dt.date(2020, 5, 22))
+            self.assertEqual(date, '2020-05-22')
+
+            date = DataConnect.date_to_isostring(dt.datetime(2020, 5, 22, 0, 0))
+            self.assertEqual(date, '2020-05-22')
+
+    unittest.main()
