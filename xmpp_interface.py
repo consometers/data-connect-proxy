@@ -1,33 +1,29 @@
 #!/usr/bin/env python3
 
 import logging
-
 import asyncio
+import datetime as dt
 
 from slixmpp import ClientXMPP
 from slixmpp.xmlstream import ElementBase, ET, register_stanza_plugin
 
 import config
+from dataconnect import DataConnect, DataConnectError
+import json
 
 class XmppInterface(ClientXMPP):
 
-    def __init__(self, jid, password, data_connect_proxy):
+    def __init__(self, jid, password, make_authorize_uri, get_consumption_load_curve):
         ClientXMPP.__init__(self, jid, password)
 
-        self.data_connect_proxy = data_connect_proxy
-
         self.add_event_handler("session_start", self.session_start)
-        self.add_event_handler("message", self.message)
-
-        # If you wanted more functionality, here's how to register plugins:
-        # self.register_plugin('xep_0030') # Service Discovery
-        # self.register_plugin('xep_0199') # XMPP Ping
-
-        # Here's how to access plugins once you've registered them:
-        # self['xep_0030'].add_feature('echo_demo')
 
         self.register_plugin('xep_0004')
         self.register_plugin('xep_0050')
+        self.register_plugin('xep_0199', {'keepalive': True, 'frequency':15})
+
+        self.authorize_uri_handler = AuthorizeUriCommandHandler(self, make_authorize_uri)
+        self.consumption_load_curve_handler = ConsumptionLoadCurveCommandHandler(self, get_consumption_load_curve)
 
     def session_start(self, event):
         self.send_presence()
@@ -42,107 +38,19 @@ class XmppInterface(ClientXMPP):
 
         # If using a component, may also pass jid keyword parameter.
 
-        self['xep_0050'].add_command(node='authorize',
+        # TODO only list commands available to a particular user
+        # TODO respond 403 when not authorized
+        self['xep_0050'].add_command(node='get_authorize_uri',
                                      name='Request authorize URI',
-                                     handler=self.handle_authorize_command)
+                                     handler=self.authorize_uri_handler.handle_request)
 
-    def handle_authorize_command(self, iq, session):
-        """
-        Respond to the initial request for a command.
-        Arguments:
-            iq      -- The iq stanza containing the command request.
-            session -- A dictionary of data relevant to the command
-                       session. Additional, custom data may be saved
-                       here to persist across handler callbacks.
-        """
-        form = self['xep_0004'].make_form(ftype='form')
-        form['instructions'] = 'Request authorize URI'
-        form.addField(var='redirect_uri',
-                      ftype='text-single',
-                      label='Adresse de redirection après consentement',
-                      value='')
-
-        form.addField(var='duration',
-                      ftype='text-single',
-                      label='Durée de l’autorisation',
-                      value='P1Y')
-
-        form.addField(var='state',
-                      ftype='text-single',
-                      label='Données associées',
-                      value='')
-
-        session['payload'] = form
-        session['next'] = self.handle_make_authorize_url
-        session['has_next'] = True
-        # session['allow_complete'] = False
-
-        # Other useful session values:
-        # session['to']                    -- The JID that received the
-        #                                     command request.
-        # session['from']                  -- The JID that sent the
-        #                                     command request.
-        # session['has_next'] = True       -- There are more steps to complete
-        # session['allow_complete'] = True -- Allow user to finish immediately
-        #                                     and possibly skip steps
-        # session['cancel'] = handler      -- Assign a handler for if the user
-        #                                     cancels the command.
-        # session['notes'] = [             -- Add informative notes about the
-        #   ('info', 'Info message'),         command's results.
-        #   ('warning', 'Warning message'),
-        #   ('error', 'Error message')]
-
-        return session
-
-    def handle_make_authorize_url(self, payload, session):
-
-        """
-        Process a command result from the user.
-        Arguments:
-            payload -- Either a single item, such as a form, or a list
-                       of items or forms if more than one form was
-                       provided to the user. The payload may be any
-                       stanza, such as jabber:x:oob for out of band
-                       data, or jabber:x:data for typical data forms.
-            session -- A dictionary of data relevant to the command
-                       session. Additional, custom data may be saved
-                       here to persist across handler callbacks.
-        """
-
-        # In this case (as is typical), the payload is a form
-
-        redirect_uri = payload['values']['redirect_uri']
-        duration = payload['values']['duration']
-        state = payload['values']['state']
-
-        print(session['from'])
-        print(type(session['from']))
-
-        authorize_uri = self.data_connect_proxy.register_authorize_request(redirect_uri, duration, session['from'].bare, state)
-
-        form = self['xep_0004'].make_form(ftype='submit')
-        form['instructions'] = 'Request authorize URI'
-        form.addField(var='authorize_uri',
-                      ftype='text-single',
-                      label='Adresse pour recueillir le consentement',
-                      value=authorize_uri)
-
-        session['payload'] = form
-
-        session['next'] = self.handle_command_complete
-        session['has_next'] = False
-        session['allow_complete'] = True
-
-        return session
-
-    def handle_command_complete(self, payload, session):
-        session['payload'] = None
-        session['next'] = None
-        return session
+        self['xep_0050'].add_command(node='get_consumption_load_curve',
+                                     name='Get consumption load curve',
+                                     handler=self.consumption_load_curve_handler.handle_request)
 
     def notify_authorize_complete(self, dest, usage_points):
 
-        msg = self.make_message(mto=dest, mfrom=self.boundjid.full, mtype="chat")
+        msg = self.make_message(mto=dest, mtype="chat")
 
         body = ET.Element('body')
         body.text = f'Access granted for usage points {", ".join(usage_points)}'
@@ -174,13 +82,161 @@ class XmppInterface(ClientXMPP):
         msg.append(form)
         msg.send()
 
-if __name__ == '__main__':
-    # Ideally use optparse or argparse to get JID,
-    # password, and log level.
+class AuthorizeUriCommandHandler:
 
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(levelname)-8s %(message)s')
+    def __init__(self, xmpp_client, make_authorize_uri):
 
-    xmpp = XmppInterface(config.XMPP_JID, config.XMPP_PASSWORD)
-    xmpp.connect()
-    xmpp.process()
+        self.xmpp = xmpp_client
+        self.make_authorize_uri = make_authorize_uri
+
+    def handle_request(self, iq, session):
+
+        form = self.xmpp['xep_0004'].make_form(ftype='form', title='Request authorize URI')
+
+        # form['instructions'] = 'Request authorize URI'
+
+        # session['notes'] = [             -- Add informative notes about the
+        #   ('info', 'Info message'),         command's results.
+        #   ('warning', 'Warning message'),
+        #   ('error', 'Error message')]
+
+        form.addField(var='redirect_uri',
+                      ftype='text-single',
+                      label='Redirect URI',
+                      desc='Adresse de redirection après consentement',
+                      value='')
+
+        form.addField(var='duration',
+                      ftype='text-single',
+                      label='Duration',
+                      desc=' Au format ISO 8601, ne peut excéder 3 ans.',
+                      required=True,
+                      value='P1Y')
+
+        form.addField(var='state',
+                      ftype='text-single',
+                      label='State',
+                      desc='Données permettant d’identifier le résultat',
+                      value='')
+
+        session['payload'] = form
+        session['next'] = self.handle_submit
+
+        return session
+
+    def handle_submit(self, payload, session):
+
+        redirect_uri = payload['values'].get('redirect_uri', None)
+        duration = payload['values']['duration']
+        state = payload['values'].get('state', None)
+
+        authorize_uri = self.make_authorize_uri(redirect_uri, duration, session['from'].bare, state)
+
+        # authorize_uri = self.data_connect_proxy.register_authorize_request(redirect_uri, duration, session['from'].bare, state)
+
+        form = self.xmpp['xep_0004'].make_form(ftype='result', title="Authorize URI")
+
+        # TODO using ftype='fixed' would be more appropriate
+        # but Psi won’t allow copy pasting
+        form.addField(var='authorize_uri',
+                      ftype='text-single',
+                      label='Adresse pour recueillir le consentement',
+                      value=authorize_uri)
+
+        session['payload'] = form
+        session['next'] = None
+
+        return session
+
+class ConsumptionLoadCurveCommandHandler:
+
+    def __init__(self, xmpp_client, get_consumption_load_curve):
+
+        self.xmpp = xmpp_client
+        self.get_consumption_load_curve = get_consumption_load_curve
+
+    def handle_request(self, iq, session):
+
+        form = self.xmpp['xep_0004'].make_form(ftype='form', title='Get consumption load curve data')
+
+        form.addField(var='usage_point_id',
+                      ftype='text-single',
+                      label='Usage point',
+                      required=True,
+                      value='')
+
+        start_date = DataConnect.date_to_isostring(dt.datetime.today() - dt.timedelta(days=1))
+        end_date = DataConnect.date_to_isostring(dt.datetime.today())
+
+        form.addField(var='start_date',
+                      ftype='text-single',
+                      label='Start date',
+                      desc=' Au format YYYY-MM-DD',
+                      required=True,
+                      value=start_date)
+
+        form.addField(var='end_date',
+                      ftype='text-single',
+                      label='End date',
+                      desc=' Au format YYYY-MM-DD',
+                      required=True,
+                      value=end_date)
+
+        session['payload'] = form
+        session['next'] = self.handle_submit
+
+        return session
+
+    def handle_submit(self, payload, session):
+
+        usage_point_id = payload['values']['usage_point_id']
+        start_date = payload['values']['start_date']
+        end_date = payload['values']['end_date']
+
+        try:
+            data = self.get_consumption_load_curve(session['from'].bare, usage_point_id, start_date, end_date)
+        except DataConnectError as e:
+            return self.fail_with(str(e), session)
+
+        # form = self.xmpp['xep_0004'].make_form(ftype='result', title="Consumption data")
+
+        # # TODO using ftype='fixed' would be more appropriate
+        # # but Psi won’t allow copy pasting
+        # form.addField(var='authorize_uri',
+        #               ftype='text-single',
+        #               label='Adresse pour recueillir le consentement',
+        #               value=authorize_uri)
+
+        # session['payload'] = form
+        session['payload'] = None
+        session['next'] = None
+
+        msg = self.xmpp.make_message(mto=session['from'],
+                                     msubject=f"Consumption load curve for {usage_point_id}",
+                                     mbody=json.dumps(data, indent=1))
+
+        sensml = ET.Element('sensml', xmlns="urn:ietf:params:xml:ns:senml")
+
+        print(data)
+
+        meter_reading = data['usage_point'][0]["meter_reading"]
+        date = meter_reading["start"]
+        measurements = meter_reading["interval_reading"]
+        for measurement in measurements:
+            t = DataConnect.date(date, half_hour_id=measurement['rank'])
+            t = str(t.replace(tzinfo=dt.timezone.utc).timestamp())
+            v = str(measurement['value'])
+            senml = ET.Element('senml', n=f"urn:dev:prm:{usage_point_id}_consumption_load", t=t, v=v, u='W')
+            sensml.append(senml)
+
+        msg.append(sensml)
+
+        msg.send()
+
+        return session
+
+    def fail_with(self, message, session):
+        session['payload'] = None
+        session['next'] = None
+        session['notes'] = [('error', message)]
+        return session
