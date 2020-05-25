@@ -1,62 +1,4 @@
-## Récupération du formulaire authorize
-
-(optionel, utilisé par les clients xmpp génériques)
-
-Client:
-```xml
-<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="cyril_lugan@liberasys.com/PsiMac" type="get" id="ab04a">
-  <query xmlns="http://jabber.org/protocol/disco#items" node="http://jabber.org/protocol/commands"/>
-</iq>
-```
-
-Serveur:
-
-```xml
-<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="ab04a">
-  <query xmlns="http://jabber.org/protocol/disco#items" node="http://jabber.org/protocol/commands">
-    <item jid="dataconnect-proxy@breizh-sen2.eu/proxy" node="get_authorize_uri" name="Request authorize URI"/>
-    <item jid="dataconnect-proxy@breizh-sen2.eu/proxy" node="get_consumption_load_curve" name="Get consumption load curve"/>
-  </query>
-</iq>
-```
-
-Client:
-
-```xml
-<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="cyril_lugan@liberasys.com/PsiMac" type="set" id="ab05a">
-  <command xmlns="http://jabber.org/protocol/commands" node="get_authorize_uri"/>
-</iq>
-```
-
-Serveur:
-
-```xml
-<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="ab05a">
-  <command xmlns="http://jabber.org/protocol/commands" node="get_authorize_uri" sessionid="1590355777.5047667-81cbb30f79084eaaac912c1607bce060" status="executing">
-    <actions>
-      <complete/>
-    </actions>
-    <x xmlns="jabber:x:data" type="form">
-      <title>Request authorize URI</title>
-      <field var="redirect_uri" type="text-single" label="Redirect URI">
-        <value/>
-        <desc>Adresse de redirection apr&#xE8;s consentement</desc>
-      </field>
-      <field var="duration" type="text-single" label="Duration">
-        <value>P1Y</value>
-        <desc> Au format ISO 8601, ne peut exc&#xE9;der 3 ans.</desc>
-        <required/>
-      </field>
-      <field var="state" type="text-single" label="State">
-        <value/>
-        <desc>Donn&#xE9;es permettant d&#x2019;identifier le r&#xE9;sultat</desc>
-      </field>
-    </x>
-  </command>
-</iq>
-```
-
-## Envoi du formulaire authorize
+## Authorize
 
 Client:
 
@@ -108,46 +50,7 @@ Serveur:
 </message>
 ```
 
-## Récupération du formulaire consumption curve
-
-(optionel, utilisé par les clients xmpp génériques)
-
-Client:
-
-```xml
-<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="cyril_lugan@liberasys.com/PsiMac" type="set" id="ab62a">
-   <command xmlns="http://jabber.org/protocol/commands" node="get_consumption_load_curve" />
-</iq>
-```
-
-Serveur:
-
-```xml
-<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="ab08a">
-  <command xmlns="http://jabber.org/protocol/commands" node="get_consumption_load_curve" sessionid="1590355810.9193444-f78d9adfa5084a06ba7e99e5a8dea070" status="executing">
-    <actions>
-      <complete/>
-    </actions>
-    <x xmlns="jabber:x:data" type="form">
-      <title>Get consumption load curve data</title>
-      <field var="usage_point_id" type="text-single" label="Usage point">
-        <value/>
-        <required/>
-      </field>
-      <field var="start_date" type="text-single" label="Start date">
-        <value>2020-05-23</value>
-        <desc> Au format YYYY-MM-DD</desc>
-        <required/>
-      </field>
-      <field var="end_date" type="text-single" label="End date">
-        <value>2020-05-24</value>
-        <desc> Au format YYYY-MM-DD</desc>
-        <required/>
-      </field>
-    </x>
-  </command>
-</iq>
-```
+## API consumtion curve
 
 Client:
 
