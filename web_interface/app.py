@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 
+import os
 import threading
 import time
 import asyncio
-import logging
 
 from aiohttp import web
+from jinja2 import Environment, PackageLoader, select_autoescape
 
 from dataconnect import DataConnect, DataConnectError
 import config
 
 import ssl
 
+MY_DIR = os.path.dirname(os.path.realpath(__file__))
+
+jinga = Environment(
+    loader=PackageLoader('web_interface', 'templates'),
+    autoescape=select_autoescape(['html', 'xml'])
+)
+
 data_connect_proxy = None
 
-def authorize_redirect(request):
+def handle_authorize_redirect(request):
 
     if 'code' in request.query:
         code = request.query['code']
@@ -43,10 +51,19 @@ def authorize_redirect(request):
     else:
         return web.Response(text=f'Access to usage points {ret["usage_points"]} granted for {ret["user"]}')
 
-app = web.Application()
-app.add_routes([web.get('/', authorize_redirect)])
+def handle_root(request):
+    template = jinga.get_template('layout.html')
+    html = template.render(the='variables', go='here')
+    return web.Response(body=html, content_type='text/html')
 
-async def start_app():
+app = web.Application()
+app.add_routes([web.get('/redirect', handle_authorize_redirect)])
+app.add_routes([web.get('/', handle_root)])
+
+# TODO use a reverse proxy
+app.add_routes([web.static('/assets', os.path.join(MY_DIR, "assets"))])
+
+async def start(run=False):
 
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     ssl_context.load_cert_chain('cert.pem', 'key.pem')
@@ -54,5 +71,25 @@ async def start_app():
     runner = web.AppRunner(app)
 
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', port=443, ssl_context=ssl_context)
+    site = web.TCPSite(runner, '0.0.0.0', port=3000, ssl_context=ssl_context)
     await site.start()
+
+    while run:
+        await asyncio.sleep(1)
+
+if __name__ == '__main__':
+
+    # Web interface can launched alone with
+    # python -m web_interface.app
+
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(levelname)-8s %(message)s')
+
+    loop = asyncio.get_event_loop()
+
+    try:
+        loop.run_until_complete(start(run=True))
+    except KeyboardInterrupt:
+        pass

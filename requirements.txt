@@ -1,3 +1,5 @@
 slixmpp
 requests
 pytz
+aiohttp
+Jinja2

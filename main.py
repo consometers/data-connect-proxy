@@ -13,7 +13,7 @@ import config
 from dataconnect import DataConnect, DataConnectError
 from xmpp_interface import XmppInterface
 
-import web_interface
+import web_interface.app
 
 class AuthorizeRequests:
 
@@ -179,7 +179,7 @@ if __name__ == '__main__':
                          proxy.get_consumption_load_curve)
 
     proxy.xmpp_interface = xmpp # TODO this is ugly
-    web_interface.data_connect_proxy = proxy # TODO this is ugly
+    web_interface.app.data_connect_proxy = proxy # TODO this is ugly
 
     # I don't really understand what is going on with asyncio
     # Got web + xmpp example on
@@ -187,7 +187,7 @@ if __name__ == '__main__':
 
     loop = asyncio.get_event_loop()
     http = loop.run_until_complete(
-        web_interface.start_app(),
+        web_interface.app.start(),
     )
 
     xmpp.connect()
