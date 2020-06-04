@@ -11,8 +11,6 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from dataconnect import DataConnect, DataConnectError
 import config
 
-import ssl
-
 MY_DIR = os.path.dirname(os.path.realpath(__file__))
 
 jinga = Environment(
@@ -65,13 +63,10 @@ app.add_routes([web.static('/assets', os.path.join(MY_DIR, "assets"))])
 
 async def start(run=False):
 
-    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_context.load_cert_chain('cert.pem', 'key.pem')
-
     runner = web.AppRunner(app)
 
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', port=3000, ssl_context=ssl_context)
+    site = web.TCPSite(runner, 'localhost', port=3000)
     await site.start()
 
     while run:
