@@ -209,41 +209,38 @@ class ConsumptionLoadCurveCommandHandler:
             data = self.get_consumption_load_curve(session['from'].bare, usage_point_id, start_date, end_date)
         except DataConnectError as e:
             return self.fail_with(str(e), session)
-
-        # form = self.xmpp['xep_0004'].make_form(ftype='result', title="Consumption data")
-
-        # # TODO using ftype='fixed' would be more appropriate
-        # # but Psi won’t allow copy pasting
-        # form.addField(var='authorize_uri',
-        #               ftype='text-single',
-        #               label='Adresse pour recueillir le consentement',
-        #               value=authorize_uri)
-
-        # session['payload'] = form
-        session['payload'] = None
+        print(data)
         session['next'] = None
 
-        msg = self.xmpp.make_message(mto=session['from'],
-                                     msubject=f"Consumption load curve for {usage_point_id}",
-                                     mbody=json.dumps(data, indent=1))
-
+        xmldata = ET.Element('data', xmlns="urn:quoalise:sen2:load_curve")
         sensml = ET.Element('sensml', xmlns="urn:ietf:params:xml:ns:senml")
-
-        print(data)
 
         meter_reading = data['usage_point'][0]["meter_reading"]
         date = meter_reading["start"]
         measurements = meter_reading["interval_reading"]
+        first = True
         for measurement in measurements:
-            t = DataConnect.date(date, half_hour_id=measurement['rank'])
-            t = str(t.replace(tzinfo=dt.timezone.utc).timestamp())
             v = str(measurement['value'])
-            senml = ET.Element('senml', n=f"urn:dev:prm:{usage_point_id}_consumption_load", t=t, v=v, u='W')
+            t = str(int(measurement['rank']) * 30 * 60)
+            if first:
+                bt = DataConnect.date(date)
+                bt = str(bt.replace(tzinfo=dt.timezone.utc).timestamp())
+                senml = ET.Element('senml', bn=f"urn:dev:prm:{usage_point_id}_consumption_load", bt=bt, t=t, v=v, u='W')
+                first = False
+            else:
+                senml = ET.Element('senml', t=t, v=v, u='W')
             sensml.append(senml)
 
-        msg.append(sensml)
+        xmldata.append(sensml)
 
+
+        # TODO keep a way to get a message instead of embedding data in the iq response
+        msg = self.xmpp.make_message(mto=session['from'].bare,
+                                    msubject=f"Consumption load curve for {usage_point_id}")
+        msg.append(xmldata)
         msg.send()
+
+        session['payload'] = None # xmldata
 
         return session
 
