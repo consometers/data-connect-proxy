@@ -3,17 +3,19 @@
 Client:
 
 ```xml
-<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="cyril_lugan@liberasys.com/PsiMac" type="set" id="ab06a">
-  <command xmlns="http://jabber.org/protocol/commands" node="get_authorize_uri" sessionid="1590355777.5047667-81cbb30f79084eaaac912c1607bce060" action="complete">
+<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="cyril_lugan@liberasys.com/PsiMac" type="set" id="abbca">
+  <command xmlns="http://jabber.org/protocol/commands" action="complete" node="get_authorize_uri" sessionid="1591519295.244349-ce980c9e67e64e9382712f64355898aa">
     <x xmlns="jabber:x:data" type="submit">
-      <field var="redirect_uri" type="text-single">
-        <value>https://viriya.fr/redirect</value>
+      <field var="name" type="text-single">
+        <value>Elec Expert Demo</value>
       </field>
-      <field var="duration" type="text-single">
-        <value>P1Y</value>
+      <field var="service" type="text-multi">
+        <value>Nos experts analysent votre consommation d’électricité sur l’année précédente mesurée par votre compteur Linky.</value>
+        <value>Lors d’un rendez-vous téléphonique, nous vous ferons part de nos recommandations pour mieux maîtriser votre consommation.</value>
       </field>
-      <field var="state" type="text-single">
-        <value>ton_etat</value>
+      <field var="processings" type="text-multi">
+        <value>Analyse votre consommation d’électricité</value>
+        <value>Affichage de graphiques</value>
       </field>
     </x>
   </command>
@@ -23,19 +25,31 @@ Client:
 Serveur:
 
 ```xml
-<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="ab06a">
-  <command xmlns="http://jabber.org/protocol/commands" node="get_authorize_uri" sessionid="1590355777.5047667-81cbb30f79084eaaac912c1607bce060" status="completed">
-    <x xmlns="jabber:x:data" type="result">
+<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="abbca">
+  <command
+    xmlns="http://jabber.org/protocol/commands" node="get_authorize_uri" sessionid="1591519295.244349-ce980c9e67e64e9382712f64355898aa" status="completed">
+    <x
+      xmlns="jabber:x:data" type="result">
       <title>Authorize URI</title>
       <field var="authorize_uri" type="text-single" label="Adresse pour recueillir le consentement">
-        <value>https://gw.hml.api.enedis.fr/dataconnect/v1/oauth2/authorize?client_id=50e853e5-20e4-44c5-8678-d35a473d7a60&amp;response_type=code&amp;duration=P1Y&amp;state=4d0572fd</value>
+        <value>http://localhost:3000/authorize?id=ad35a140</value>
       </field>
     </x>
   </command>
 </iq>
 ```
 
+Il est possible de rajouter à cette adresse une durée et un adresse de redirection:
+
+```
+http://localhost:3000/authorize?id=ad35a140&duration=P1Y&redirect_uri=http%3A%2F%2Fperdu.com%3Fuser%3Dplop
+```
+
 Quand l’utilisateur à exprimé son consentement, redirection web vers redirect uri + envoi d’un message xmpp
+
+```
+http://perdu.com?user=plop&usage_points=64975835695673,63695879465986,22315546958763
+```
 
 Serveur:
 
@@ -75,18 +89,29 @@ Client:
 Serveur:
 
 ```xml
-<message to="cyril_lugan@liberasys.com/PsiMac" id="c0f13c842c4c422586cf10994c9883e6" xml:lang="en">
-  <origin-id xmlns="urn:xmpp:sid:0" id="c0f13c842c4c422586cf10994c9883e6"/>
-  <body>{Données brutes en json}</body>
-  <subject>Consumption load curve for 26584978546985</subject>
-  <sensml xmlns="urn:ietf:params:xml:ns:senml">
-    <senml n="urn:dev:prm:22516914714270_consumption_load" t="1590193800.0" v="2133" u="W"/>
-    <senml n="urn:dev:prm:22516914714270_consumption_load" t="1590195600.0" v="2097" u="W"/>
-    …
-    <senml n="urn:dev:prm:22516914714270_consumption_load" t="1590278400.0" v="1465" u="W"/>
-  </sensml>
-</message>
+<message to="cyril_lugan@liberasys.com" id="62b5efaae4444b488c3b2e48a22535bd" xml:lang="en">
+  <origin-id
+    xmlns="urn:xmpp:sid:0" id="62b5efaae4444b488c3b2e48a22535bd" />
+    <subject>Consumption load curve for 22516914714270</subject>
+    <data
+      xmlns="urn:quoalise:sen2:load_curve">
+      <sensml
+        xmlns="urn:ietf:params:xml:ns:senml">
+        <senml bn="urn:dev:prm:22516914714270_consumption_load" bt="1590969600.0" t="1800" v="1616" u="W" />
+        <senml t="3600" v="1742" u="W" />
+        <senml t="5400" v="1689" u="W" />
+        <senml t="7200" v="1782" u="W" />
+        <!-- … -->
+        <senml t="84600" v="1597" u="W" />
+        <senml t="86400" v="2062" u="W" />
+      </sensml>
+    </data>
+  </message>
 ```
+
+bt: « base time, » timestamp en UTC (seconde)
+t: offset en seconde à ajouter à bt
+bn: « base name, » nom à utiliser pour toutes les entrées suivantes
 
 Serveur:
 

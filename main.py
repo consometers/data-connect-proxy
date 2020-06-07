@@ -15,6 +15,29 @@ from xmpp_interface import XmppInterface
 
 import web_interface.app
 
+class AuthorizeDescriptions:
+
+    def __init__(self):
+        self.data = {}
+
+    def add(self, jid, name, service, processings):
+        while True:
+            uid = str(uuid.uuid4())[:8]
+            if not uid in self.data:
+                break
+
+        self.data[uid] = {
+            'jid': jid,
+            'name': name,
+            'service': service,
+            'processings': processings
+        }
+
+        return uid
+
+    def get(self, uid):
+        return self.data.get(uid)
+
 class AuthorizeRequests:
 
     def __init__(self):
@@ -80,6 +103,7 @@ class DataConnectProxy:
         self.data_connect = data_connect
         self.tokens = Tokens()
         self.usage_points = UsagePoints()
+        self.authorize_descriptions = AuthorizeDescriptions()
         self.authorize_requests = AuthorizeRequests()
         self.load_state()
 
@@ -87,6 +111,7 @@ class DataConnectProxy:
         state = {
             'tokens': self.tokens.data,
             'usage_points': self.usage_points.data,
+            'authorize_descriptions': self.authorize_descriptions.data,
             'authorize_requests': self.authorize_requests.data
         }
         with open('state.json', 'w') as f:
@@ -96,9 +121,15 @@ class DataConnectProxy:
         if os.path.exists('state.json'):
             with open('state.json') as f:
                 state = json.load(f)
-            self.tokens.data = state['tokens']
-            self.usage_points.data = state['usage_points']
-            self.authorize_requests.data = state['authorize_requests']
+            self.tokens.data = state.get('tokens', {})
+            self.usage_points.data = state.get('usage_points', {})
+            self.authorize_descriptions.data = state.get('authorize_descriptions', {})
+            self.authorize_requests.data = state.get('authorize_requests', {})
+
+    def register_authorize_description(self, jid, name, service, processings):
+
+        uid = self.authorize_descriptions.add(jid, name, service, processings)
+        return f"{config.BASE_URI}/authorize?id={uid}"
 
     def register_authorize_request(self, redirect_uri, duration, user_bare_jid, user_state):
 
@@ -175,7 +206,7 @@ if __name__ == '__main__':
                         format='%(levelname)-8s %(message)s')
 
     xmpp = XmppInterface(config.XMPP_JID, config.XMPP_PASSWORD,
-                         proxy.register_authorize_request,
+                         proxy.register_authorize_description,
                          proxy.get_consumption_load_curve)
 
     proxy.xmpp_interface = xmpp # TODO this is ugly

@@ -109,24 +109,22 @@ class AuthorizeUriCommandHandler:
         #   ('warning', 'Warning message'),
         #   ('error', 'Error message')]
 
-        form.addField(var='redirect_uri',
+        form.addField(var='name',
                       ftype='text-single',
-                      label='Redirect URI',
-                      desc='Adresse de redirection après consentement',
-                      value='')
+                      label='Nom du service',
+                      value="Elec Expert Demo")
 
-        form.addField(var='duration',
-                      ftype='text-single',
-                      label='Duration',
-                      desc=' Au format ISO 8601, ne peut excéder 3 ans.',
-                      required=True,
-                      value='P1Y')
+        # TODO add a value field for each line, see XEP-0004
+        form.addField(var='service',
+                      ftype='text-multi',
+                      label='Description du service',
+                      value='Nos experts analysent votre consommation d’électricité sur l’année précédente mesurée par votre compteur Linky.\n'+
+                            'Lors d’un rendez-vous téléphonique, nous vous ferons part de nos recommandations pour mieux maîtriser votre consommation.')
 
-        form.addField(var='state',
-                      ftype='text-single',
-                      label='State',
-                      desc='Données permettant d’identifier le résultat',
-                      value='')
+        form.addField(var='processings',
+                      ftype='text-multi',
+                      label='Processings',
+                      value='Analyse votre consommation d’électricité\nAffichage de graphiques')
 
         session['payload'] = form
         session['next'] = self.handle_submit
@@ -135,13 +133,11 @@ class AuthorizeUriCommandHandler:
 
     def handle_submit(self, payload, session):
 
-        redirect_uri = payload['values'].get('redirect_uri', None)
-        duration = payload['values']['duration']
-        state = payload['values'].get('state', None)
+        name = payload['values'].get('name', session['from'].bare)
+        service = payload['values'].get('service', None)
+        processings = payload['values'].get('processings', None)
 
-        authorize_uri = self.make_authorize_uri(redirect_uri, duration, session['from'].bare, state)
-
-        # authorize_uri = self.data_connect_proxy.register_authorize_request(redirect_uri, duration, session['from'].bare, state)
+        authorize_uri = self.make_authorize_uri(session['from'].bare, name, service, processings)
 
         form = self.xmpp['xep_0004'].make_form(ftype='result', title="Authorize URI")
 
