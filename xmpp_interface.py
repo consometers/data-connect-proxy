@@ -206,10 +206,72 @@ class ConsumptionLoadCurveCommandHandler:
         except DataConnectError as e:
             return self.fail_with(str(e), session)
         print(data)
+
+        form = self.xmpp['xep_0004'].make_form(ftype='result', title="Get consumption load curve data")
+
+        # TODO can't get reports to show properly on gajim
+        # form.add_reported('result', ftype='fixed', label=f'Consumption load curve for {usage_point_id}')
+        # form.add_item({'result': 'Success'})
+        # TODO Psi won’t show session['notes'] = [('info', "…")]
+
+        form.addField(var='result',
+                      ftype='fixed',
+                      label=f'Consumption load curve for {usage_point_id}',
+                      value=f"Success")
+
         session['next'] = None
 
-        xmldata = ET.Element('data', xmlns="urn:quoalise:sen2:load_curve")
+        # <quoalise xmlns="urn:quoalise:0">
+        #   <!-- On peut éventuellement mettre plusieurs élements data -->
+        #   <data>
+        #     <meta>
+        #       <!-- Les meta données utilisables pour tout type de données, à determiner -->
+        #       <device type="electricity-meter">
+        #         <identifier authority="enedis" type="prm" value="22516914714270"/>
+        #       </device>
+        #       <app id="https://datahub-enedis.fr/data-connect/">
+        #         <!-- Les meta données propres à cette application ajoutées sous forme d’extension -->
+        #         <data-connect xmlns="urn:consometers:dataconnect:0">
+        #           <start>2020-06-01</start>
+        #           <end>2020-06-02</end>
+        #         </data-connect>
+        #       </app>
+        #       <measurement>
+        #         <physical quantity="power" type="electrical" unit="W">
+        #         <business graph="load-profile" direction="consumption"/>
+        #         <aggregate type="average" />
+        #         <sampling interval="1800" />
+        #       </measurement>
+        #     </meta>
+        #     <senml></senml>
+        #   </data>
+        # </quoalise>
+
+        class Quoalise(ElementBase):
+          name = 'quoalise'
+          namespace = 'urn:quoalise:0'
+
+        quoalise = Quoalise()
+
+        xmldata = ET.Element('data')
+        quoalise.xml.append(xmldata)
+
+        meta = ET.Element('meta')
+        xmldata.append(meta)
+
+        device = ET.Element('device', attrib={'type': "electricity-meter"})
+        meta.append(device)
+        device.append(ET.Element('identifier', attrib={'authority': "enedis", 'type': "prm", 'value': usage_point_id}))
+
+        measurement = ET.Element('measurement')
+        meta.append(measurement)
+        measurement.append(ET.Element('physical', attrib={'quantity': "power", 'type': "electrical", 'unit': "W"}))
+        measurement.append(ET.Element('business', graph="load-profile", direction="consumption"))
+        measurement.append(ET.Element('aggregate', attrib={'type': "average"}))
+        measurement.append(ET.Element('sampling', interval="1800"))
+
         sensml = ET.Element('sensml', xmlns="urn:ietf:params:xml:ns:senml")
+        xmldata.append(sensml)
 
         meter_reading = data['usage_point'][0]["meter_reading"]
         date = meter_reading["start"]
@@ -221,22 +283,19 @@ class ConsumptionLoadCurveCommandHandler:
             if first:
                 bt = DataConnect.date(date)
                 bt = str(bt.replace(tzinfo=dt.timezone.utc).timestamp())
-                senml = ET.Element('senml', bn=f"urn:dev:prm:{usage_point_id}_consumption_load", bt=bt, t=t, v=v, u='W')
+                senml = ET.Element('senml', bn=f"urn:dev:prm:{usage_point_id}_consumption_load", bt=bt, t=t, v=v, bu='W')
                 first = False
             else:
-                senml = ET.Element('senml', t=t, v=v, u='W')
+                senml = ET.Element('senml', t=t, v=v)
             sensml.append(senml)
 
-        xmldata.append(sensml)
+        # TODO keep a way, like a checkbox to get a message instead of embedding data in the iq response
+        # msg = self.xmpp.make_message(mto=session['from'].bare,
+        #                             msubject=f"Consumption load curve for {usage_point_id}")
+        # msg.append(quoalise)
+        #msg.send()
 
-
-        # TODO keep a way to get a message instead of embedding data in the iq response
-        msg = self.xmpp.make_message(mto=session['from'].bare,
-                                    msubject=f"Consumption load curve for {usage_point_id}")
-        msg.append(xmldata)
-        msg.send()
-
-        session['payload'] = None # xmldata
+        session['payload'] = [form, quoalise]
 
         return session
 
