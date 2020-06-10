@@ -27,6 +27,14 @@ def handle_authorize_redirect(request):
     else:
         raise web.HTTPInternalServerError(text=f"'code' parameter is expected")
 
+    # Handles the user refusing to give a conscent
+    # https://cyril.lu/dataconnect-proxy/redirect?code=403&error=access_denied&error_description=authorization_request_refused
+    # Unfortunately, we have no way to get the redirect uri since state is not returned
+    if code == '403':
+        template = jinga.get_template('redirect_error.html')
+        html = template.render()
+        return web.Response(body=html, content_type='text/html')
+
     if 'state' in request.query:
         state = request.query['state']
     else:
@@ -37,10 +45,8 @@ def handle_authorize_redirect(request):
     except DataConnectError as e:
         raise web.HTTPInternalServerError(text=str(e))
 
-    # TODO use exception instead
     if ret is None:
-        return None
-
+        raise web.HTTPNotFound(f"state {state} is not known")
 
     redirect_uri = ret.get('redirect_uri')
     if redirect_uri:
@@ -54,7 +60,7 @@ def handle_authorize_redirect(request):
         # (maybe that was the cause of the bug in the enedis portal)
         raise web.HTTPFound(redirect_uri)
     else:
-        template = jinga.get_template('redirect.html')
+        template = jinga.get_template('redirect_ok.html')
         html = template.render(usage_points=ret["usage_points"])
         return web.Response(body=html, content_type='text/html')
 
