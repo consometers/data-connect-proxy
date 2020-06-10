@@ -41,10 +41,10 @@ def handle_authorize_redirect(request):
     if ret is None:
         return None
 
-    usage_points = ",".join(ret["usage_points"])
 
     redirect_uri = ret.get('redirect_uri')
     if redirect_uri:
+        usage_points = ",".join(ret["usage_points"])
         # TODO proper query parameter appending and escpaping
         if '?' in redirect_uri:
             redirect_uri = redirect_uri + '&usage_points=' + usage_points
@@ -54,7 +54,9 @@ def handle_authorize_redirect(request):
         # (maybe that was the cause of the bug in the enedis portal)
         raise web.HTTPFound(redirect_uri)
     else:
-        return web.Response(text=f'Access to usage points {usage_points} granted for {ret["user"]}')
+        template = jinga.get_template('redirect.html')
+        html = template.render(usage_points=ret["usage_points"])
+        return web.Response(body=html, content_type='text/html')
 
 def handle_root(request):
     template = jinga.get_template('layout.html')

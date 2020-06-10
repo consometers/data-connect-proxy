@@ -5,7 +5,7 @@
 
 {% block content %}
 
-<p><strong>{{ description.name }}</strong> souhaite accéder à vos données de consommation</p>
+<h4>{{ description.name }} souhaite accéder à vos données de consommation</h4>
 
 {% if description.service %}
 	{% if '<' in description.service %}
@@ -17,18 +17,11 @@
 	{% endif %}
 {% endif %}
 
-<h4>Autoriser l’accès à vos données de consommation</h4>
+<h4>Autoriser Enedis à nous transmettre vos données</h4>
 
-<div class="row">
-	<div class="col">
-		<p>Enedis gère le réseau d’électricité jusqu’au compteur d’électricité. Pour {{ description.name }}, autorisez Enedis à nous transmettre vos données Linky.</p>
-		<p>En cliquant sur ce bouton, vous accéderez à votre espace client Enedis où vous pourrez autoriser Enedis à nous transmettre vos données de consommation.</p>
-		<p><a href="{{ authorize_uri }}"><img src="https://datahub-enedis.fr/wp-content/uploads/2018/11/azure.png" class="rounded" width="141"/></a></p>
-	</div>
-	<div class="col-3">
-		<img src="https://datahub-enedis.fr/wp-content/uploads/GRA488.png" class="float-right"/>
-	</div>
-</div>
+<p>Enedis gère le réseau d’électricité jusqu’au compteur d’électricité.</p>
+<p>En cliquant sur ce bouton, vous accéderez à votre espace client Enedis où vous pourrez autoriser Enedis à nous transmettre vos données de consommation.</p>
+<p><a href="{{ authorize_uri }}"><img src="https://datahub-enedis.fr/wp-content/uploads/2018/11/azure.png" class="rounded" width="141"/></a></p>
 
 <!--h4>Données vous concernant</h4>
 
@@ -38,7 +31,7 @@
 	<li>Votre puissance maximale de d’électricité quotidienne</li>
 </ul-->
 
-<h4>Traitement sur les données</h4>
+<!--h4>Traitement sur les données</h4>
 
 {% if description.processings %}
 	{% if '<' in description.processings %}
@@ -56,4 +49,5 @@
 
 ALOEN, l'agence locale de l'énergie de Bretagne Sud collectera ces données auprès d’Enedis pour les transmettre à {{ description.name }}. En savoir plus.
 
+-->
 {% endblock %}
