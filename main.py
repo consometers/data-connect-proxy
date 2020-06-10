@@ -43,10 +43,16 @@ class AuthorizeRequests:
     def __init__(self):
         self.data = {}
 
-    def add(self, jid, user_state, redirect_uri):
+    def add(self, jid, user_state, redirect_uri, test_client_id=None):
+
+        # Test client id should be a str between '0' and '9'
+        if not isinstance(test_client_id, str) or len(test_client_id) != 1:
+            test_client_id=None
 
         while True:
             state = str(uuid.uuid4())[:8]
+            if test_client_id is not None:
+                state = state + test_client_id
             if not state in self.data:
                 break
 
@@ -131,9 +137,9 @@ class DataConnectProxy:
         uid = self.authorize_descriptions.add(jid, name, service, processings)
         return f"{config.BASE_URI}/authorize?id={uid}"
 
-    def register_authorize_request(self, redirect_uri, duration, user_bare_jid, user_state):
+    def register_authorize_request(self, redirect_uri, duration, user_bare_jid, user_state, test_client_id=None):
 
-        state = self.authorize_requests.add(user_bare_jid, user_state, redirect_uri)
+        state = self.authorize_requests.add(user_bare_jid, user_state, redirect_uri, test_client_id)
         return self.data_connect.make_authorize_url('P1Y', state=state)
 
     def authorize_request_callback(self, code, state):

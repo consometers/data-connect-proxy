@@ -78,7 +78,8 @@ def handle_authorize_description(request):
     duration = request.query.get('duration', 'P1Y')
     user_state = None
 
-    authorize_uri = data_connect_proxy.register_authorize_request(redirect_uri, duration, description['jid'], user_state)
+    test_client_id = request.query.get('test_client', None)
+    authorize_uri = data_connect_proxy.register_authorize_request(redirect_uri, duration, description['jid'], user_state, test_client_id)
 
     html = template.render(description=description, authorize_uri=authorize_uri)
     return web.Response(body=html, content_type='text/html')
