@@ -273,20 +273,24 @@ class ConsumptionLoadCurveCommandHandler:
         sensml = ET.Element('sensml', xmlns="urn:ietf:params:xml:ns:senml")
         xmldata.append(sensml)
 
-        meter_reading = data['usage_point'][0]["meter_reading"]
-        date = meter_reading["start"]
+        meter_reading = data["meter_reading"]
+        bt = DataConnect.date(meter_reading["start"])
+        bt = int(bt.replace(tzinfo=dt.timezone.utc).timestamp())
         measurements = meter_reading["interval_reading"]
         first = True
         for measurement in measurements:
             v = str(measurement['value'])
-            t = str(int(measurement['rank']) * 30 * 60)
+            t = DataConnect.datetime(measurement["date"])
+            t = int(t.replace(tzinfo=dt.timezone.utc).timestamp())
+            t = t - bt
+ 
             if first:
-                bt = DataConnect.date(date)
-                bt = str(bt.replace(tzinfo=dt.timezone.utc).timestamp())
-                senml = ET.Element('senml', bn=f"urn:dev:prm:{usage_point_id}_consumption_load", bt=bt, t=t, v=v, bu='W')
+                senml = ET.Element('senml',
+                                   bn=f"urn:dev:prm:{usage_point_id}_consumption_load",
+                                   bt=str(bt), t=str(t), v=str(v), bu='W')
                 first = False
             else:
-                senml = ET.Element('senml', t=t, v=v)
+                senml = ET.Element('senml', t=str(t), v=str(v))
             sensml.append(senml)
 
         # TODO keep a way, like a checkbox to get a message instead of embedding data in the iq response

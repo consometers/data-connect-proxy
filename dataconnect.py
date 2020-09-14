@@ -69,7 +69,7 @@ class DataConnect():
         }
         hed = {'Authorization': 'Bearer ' + access_token}
 
-        r = requests.get(self.api_endpoint + "/v3/metering_data/consumption_load_curve", params=params, headers=hed)
+        r = requests.get(self.api_endpoint + "/v4/metering_data/consumption_load_curve", params=params, headers=hed)
 
         if r.status_code == 200:
             return r.json()
@@ -97,6 +97,16 @@ class DataConnect():
         return date
 
         #print(paris_tz.localize(date).astimezone(pytz.utc).strftime("%s"))
+
+    @staticmethod
+    def datetime(date):
+        date = dt.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+        paris_tz = pytz.timezone('Europe/Paris')
+        date = paris_tz.localize(date)
+        return date
+
+        #print(paris_tz.localize(date).astimezone(pytz.utc).strftime("%s"))
+
 
 if __name__ == '__main__':
 
