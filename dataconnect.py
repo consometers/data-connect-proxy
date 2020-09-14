@@ -5,7 +5,15 @@ import datetime as dt
 import pytz
 
 class DataConnectError(Exception):
-    pass
+    def __init__(self, message, code=None):
+        self.message = message
+        self.code = code
+
+    def __str__(self):
+        if self.code is not None:
+            return f"{self.code}: {self.message}"
+        else:
+            return self.message
 
 class DataConnect():
 
@@ -55,7 +63,11 @@ class DataConnect():
         if r.status_code == 200:
             return r.json()
         else:
-            raise DataConnectError(r.text)
+            try:
+                error = r.json()
+                raise DataConnectError(error['error_description'], code=error['error'])
+            except KeyError as e:
+                raise DataConnectError(r.text)
 
     def get_consumption_load_curve(self, usage_point_id, start_date, end_date, access_token):
 
@@ -74,7 +86,11 @@ class DataConnect():
         if r.status_code == 200:
             return r.json()
         else:
-            raise DataConnectError(r.text)
+            try:
+                error = r.json()
+                raise DataConnectError(error['error_description'], code=error['error'])
+            except KeyError as e:
+                raise DataConnectError(r.text)
 
     @staticmethod
     def date_to_isostring(date):

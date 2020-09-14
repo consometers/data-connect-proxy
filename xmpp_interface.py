@@ -5,6 +5,7 @@ import asyncio
 import datetime as dt
 
 from slixmpp import ClientXMPP
+from slixmpp.exceptions import XMPPError
 from slixmpp.xmlstream import ElementBase, ET, register_stanza_plugin
 
 import config
@@ -204,7 +205,7 @@ class ConsumptionLoadCurveCommandHandler:
         try:
             data = self.get_consumption_load_curve(session['from'].bare, usage_point_id, start_date, end_date)
         except DataConnectError as e:
-            return self.fail_with(str(e), session)
+            return self.fail_with(e.message, e.code, session)
         print(data)
 
         form = self.xmpp['xep_0004'].make_form(ftype='result', title="Get consumption load curve data")
@@ -282,9 +283,11 @@ class ConsumptionLoadCurveCommandHandler:
             v = str(measurement['value'])
             t = DataConnect.datetime(measurement["date"])
             t = int(t.replace(tzinfo=dt.timezone.utc).timestamp())
+
             t = t - bt
  
             if first:
+
                 senml = ET.Element('senml',
                                    bn=f"urn:dev:prm:{usage_point_id}_consumption_load",
                                    bt=str(bt), t=str(t), v=str(v), bu='W')
@@ -303,8 +306,18 @@ class ConsumptionLoadCurveCommandHandler:
 
         return session
 
-    def fail_with(self, message, session):
-        session['payload'] = None
-        session['next'] = None
-        session['notes'] = [('error', message)]
-        return session
+    def fail_with(self, message, code, session):
+
+        # TODO clean session?
+        # session['payload'] = None
+        # session['next'] = None
+
+        args = {'issuer': 'enedis-data-connect'} # TODO directly use a xml ns?
+        if code is not None:
+            args['code'] = code
+
+        raise XMPPError(extension="upstream-error",
+                        extension_ns="urn:quoalise:0",
+                        extension_args=args,
+                        text=message,
+                        etype="cancel")
