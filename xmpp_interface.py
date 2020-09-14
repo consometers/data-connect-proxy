@@ -97,7 +97,7 @@ class AuthorizeUriCommandHandler:
 
     def handle_request(self, iq, session):
 
-        if iq['command']['action'] == "complete":
+        if iq['command'].xml: # has subelements
             return self.handle_submit(session['payload'], session)
 
         form = self.xmpp['xep_0004'].make_form(ftype='form', title='Request authorize URI')
@@ -162,7 +162,7 @@ class ConsumptionLoadCurveCommandHandler:
 
     def handle_request(self, iq, session):
 
-        if iq['command']['action'] == "complete":
+        if iq['command'].xml: # has subelements
             return self.handle_submit(session['payload'], session)
 
         form = self.xmpp['xep_0004'].make_form(ftype='form', title='Get consumption load curve data')
