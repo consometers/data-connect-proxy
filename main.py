@@ -59,7 +59,8 @@ class AuthorizeRequests:
         self.data[state] = {
             'jid': jid,
             'state': user_state,
-            'redirect_uri': redirect_uri
+            'redirect_uri': redirect_uri,
+            'is_sandbox': test_client_id is not None
         }
 
         return state
@@ -72,7 +73,7 @@ class Tokens:
     def __init__(self):
         self.data = {}
 
-    def set(self, access_token, refresh_token, expires_in, idx=None):
+    def set(self, access_token, refresh_token, expires_in, is_sandbox, idx=None):
         if idx is None:
             idx = str(len(self.data))
         expires_at = dt.datetime.now() + dt.timedelta(seconds=int(expires_in))
@@ -80,7 +81,8 @@ class Tokens:
         self.data[idx] = {
             'access_token': access_token,
             'refresh_token': refresh_token,
-            'expires_at': expires_at
+            'expires_at': expires_at,
+            'is_sandbox': is_sandbox
         }
         return idx
 
@@ -105,8 +107,9 @@ class UsagePoints:
 
 class DataConnectProxy:
 
-    def __init__(self, data_connect):
-        self.data_connect = data_connect
+    def __init__(self, data_connect_prod, data_connect_sandbox):
+        self.data_connect_prod = data_connect_prod
+        self.data_connect_sandbox = data_connect_sandbox
         self.tokens = Tokens()
         self.usage_points = UsagePoints()
         self.authorize_descriptions = AuthorizeDescriptions()
@@ -132,6 +135,13 @@ class DataConnectProxy:
             self.authorize_descriptions.data = state.get('authorize_descriptions', {})
             self.authorize_requests.data = state.get('authorize_requests', {})
 
+    def get_data_connect(self, sandbox):
+        if sandbox:
+            return self.data_connect_sandbox
+        else:
+            return self.data_connect_prod
+
+
     def register_authorize_description(self, jid, name, service, processings):
 
         uid = self.authorize_descriptions.add(jid, name, service, processings)
@@ -140,7 +150,8 @@ class DataConnectProxy:
     def register_authorize_request(self, redirect_uri, duration, user_bare_jid, user_state, test_client_id=None):
 
         state = self.authorize_requests.add(user_bare_jid, user_state, redirect_uri, test_client_id)
-        return self.data_connect.make_authorize_url('P1Y', state=state)
+        is_sandbox = test_client_id is not None
+        return self.get_data_connect(is_sandbox).make_authorize_url('P1Y', state=state)
 
     def authorize_request_callback(self, code, state):
 
@@ -149,10 +160,12 @@ class DataConnectProxy:
         if authorize_request is None:
             return None
 
-        res = self.data_connect.get_access_token(code=code)
+        is_sandbox = authorize_request['is_sandbox']
+
+        res = self.get_data_connect(is_sandbox).get_access_token(code=code)
 
         jid = authorize_request['jid']
-        token_id = self.tokens.set(res['access_token'], res['refresh_token'], res['expires_in'])
+        token_id = self.tokens.set(res['access_token'], res['refresh_token'], res['expires_in'], is_sandbox)
 
         usage_points = res['usage_points_id'].split(',')
 
@@ -179,21 +192,22 @@ class DataConnectProxy:
             raise DataConnectError(f'User {jid} is not allowed to access {usage_point_id}')
 
         token = self.tokens.get(token_id)
+        is_sandbox = token['is_sandbox']
 
         # TODO time margin
         if dt.datetime.now() > token['expires_at']:
             print("A refresh token is needed")
-            res = self.data_connect.get_access_token(refresh_token=token['refresh_token'])
-            self.tokens.set(res['access_token'], res['refresh_token'], res['expires_in'], token_id)
+            res = self.get_data_connect(is_sandbox).get_access_token(refresh_token=token['refresh_token'])
+            self.tokens.set(res['access_token'], res['refresh_token'], res['expires_in'], is_sandbox, token_id)
             access_token = res['access_token']
         else:
             access_token = token['access_token']
 
-        return access_token
+        return access_token, is_sandbox
 
     def get_consumption_load_curve(self, jid, usage_point_id, start_date, end_date):
-        access_token = self.get_access_token(jid, usage_point_id)
-        data = self.data_connect.get_consumption_load_curve(usage_point_id, start_date, end_date, access_token)
+        access_token, is_sandbox = self.get_access_token(jid, usage_point_id)
+        data = self.get_data_connect(is_sandbox).get_consumption_load_curve(usage_point_id, start_date, end_date, access_token)
         return data
 
 if __name__ == '__main__':
@@ -201,9 +215,14 @@ if __name__ == '__main__':
     data_connect = DataConnect(config.DATACONNECT_ID,
                                config.DATACONNECT_SECRET,
                                config.DATACONNECT_REDIRECT_URI,
-                               sandbox=True)
+                               sandbox=False)
 
-    proxy = DataConnectProxy(data_connect)
+    data_connect_sandbox = DataConnect(config.DATACONNECT_SANDBOX_ID,
+                                       config.DATACONNECT_SANDBOX_SECRET,
+                                       config.DATACONNECT_SANDBOX_REDIRECT_URI,
+                                       sandbox=True)
+
+    proxy = DataConnectProxy(data_connect, data_connect_sandbox)
 
     # Ideally use optparse or argparse to get JID,
     # password, and log level.
