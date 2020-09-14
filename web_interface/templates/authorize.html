@@ -11,7 +11,7 @@
 	{% if '<' in description.service %}
 		{{ description.service | safe }}
 	{% else %}
-		{% for line in description.service.split('\n') %}
+		{% for line in description.service %}
 			<p>{{ line }}</p>
 		{% endfor %}
 	{% endif %}
@@ -38,7 +38,7 @@
 		{{ description.processings | safe }}
 	{% else %}
 		<ul>
-		{% for line in description.processings.split('\n') %}
+		{% for line in description.processings %}
 			<li>{{ line }}</li>
 		{% endfor %}
 		</ul>
