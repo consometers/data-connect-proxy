@@ -3,8 +3,8 @@
 Client:
 
 ```xml
-<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="cyril_lugan@liberasys.com/PsiMac" type="set" id="abbca">
-  <command xmlns="http://jabber.org/protocol/commands" action="complete" node="get_authorize_uri" sessionid="1591519295.244349-ce980c9e67e64e9382712f64355898aa">
+<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="…" type="set" id="abbca">
+  <command xmlns="http://jabber.org/protocol/commands" action="execute" node="get_authorize_uri">
     <x xmlns="jabber:x:data" type="submit">
       <field var="name" type="text-single">
         <value>Elec Expert Demo</value>
@@ -25,24 +25,64 @@ Client:
 Serveur:
 
 ```xml
-<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="abbca">
+<iq xml:lang="fr" to="…" type="result" id="abbca">
   <command
     xmlns="http://jabber.org/protocol/commands" node="get_authorize_uri" sessionid="1591519295.244349-ce980c9e67e64e9382712f64355898aa" status="completed">
     <x
       xmlns="jabber:x:data" type="result">
       <title>Authorize URI</title>
       <field var="authorize_uri" type="text-single" label="Adresse pour recueillir le consentement">
-        <value>http://localhost:3000/authorize?id=ad35a140</value>
+        <value>https://srv5.breizh-sen2.eu/dataconnect-proxy/authorize?id=ad35a140</value>
       </field>
     </x>
   </command>
 </iq>
 ```
 
-Il est possible de rajouter à cette adresse une durée et un adresse de redirection:
+Il est possible de rajouter à cette adresse une durée et un adresse de redirection :
 
 ```
-http://localhost:3000/authorize?id=ad35a140&duration=P1Y&redirect_uri=http%3A%2F%2Fperdu.com%3Fuser%3Dplop
+https://srv5.breizh-sen2.eu/dataconnect-proxy/authorize?id=ad35a140&duration=P1Y&redirect_uri=http%3A%2F%2Fperdu.com%3Fuser%3Dplop
+```
+
+Pour utiliser le bac à sable, il est possible d’ajouter un paramètre `test_client` :
+
+```
+https://srv5.breizh-sen2.eu/dataconnect-proxy/authorize?id=ad35a140&duration=P1Y&test_client=0
+```
+
+Rappel des profils clients de test Enedis :
+
+```
+0: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+1: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service le 27 août 2019.
+
+2: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il n’a pas activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+3: Client qui possède un point de livraison de consommation et un point de livraison de production pour lesquels il a activé les courbes de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.
+
+4: Client qui possède qu’un  seul point de livraison de consommation pour lequel il a activé la courbe de charge.
+Ses données présentent des « trous » de données les mardis et mercredis et son compteur a été mis en service au début
+du déploiement Linky
+
+5: Client qui possède qu’un seul point de livraison de production pour lequel il a activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+6: Client qui possède un point de livraison d’ auto-consommation pour lequel il a activé la courbe de charge en production et en consommation.
+Pour chaque point prélevé, lorsque la consommation est supérieur à la production les données de consommation remontées correspondent à la consommation moins la production et la production est nulle. Inversement lorsque la production est supérieure à la consommation.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+7: Client qui possède trois points de livraison de consommation  pour lesquels il a activé les courbes de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.
+
+8: Client qui donne son consentement mais le révoque immédiatement après l’avoir donné.
+
+9: Client qui refuse systématiquement de donner son consentement.
 ```
 
 Quand l’utilisateur à exprimé son consentement, redirection web vers redirect uri + envoi d’un message xmpp
@@ -64,74 +104,80 @@ Serveur:
 </message>
 ```
 
-## API consumtion curve
+## API load curve
 
 Client:
 
 ```xml
-<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="cyril_lugan@liberasys.com/PsiMac" type="set" id="ab63a">
-   <command xmlns="http://jabber.org/protocol/commands" node="get_consumption_load_curve" sessionid="1590408196.4231362-f128dbc37646459fbc1a371b50613e52" action="complete">
+<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="…" type="set" id="ab63a">
+   <command xmlns="http://jabber.org/protocol/commands" node="get_consumption_load_curve" action="execute">
       <x xmlns="jabber:x:data" type="submit">
          <field var="usage_point_id" type="text-single">
-            <value>26584978546985</value>
+            <value>10284856584123</value>
+         </field>
+         <field var="direction" type="list-single">
+             <value>production</value>
          </field>
          <field var="start_date" type="text-single">
-            <value>2020-05-20</value>
+            <value>2020-09-14</value>
          </field>
          <field var="end_date" type="text-single">
-            <value>2020-05-21</value>
+            <value>2020-09-15</value>
          </field>
       </x>
    </command>
 </iq>
 ```
 
-Serveur:
+Le champs direction peut prendre les valeurs `consumption` et `production`.
+
+Le serveur renvoie les données en réponse à l'iq, au format SENML :
 
 ```xml
-<message to="cyril_lugan@liberasys.com" id="62b5efaae4444b488c3b2e48a22535bd" xml:lang="en">
-  <origin-id
-    xmlns="urn:xmpp:sid:0" id="62b5efaae4444b488c3b2e48a22535bd" />
-    <subject>Consumption load curve for 22516914714270</subject>
-    <data
-      xmlns="urn:quoalise:sen2:load_curve">
-      <sensml
-        xmlns="urn:ietf:params:xml:ns:senml">
-        <senml bn="urn:dev:prm:22516914714270_consumption_load" bt="1590969600.0" t="1800" v="1616" u="W" />
-        <senml t="3600" v="1742" u="W" />
-        <senml t="5400" v="1689" u="W" />
-        <senml t="7200" v="1782" u="W" />
-        <!-- … -->
-        <senml t="84600" v="1597" u="W" />
-        <senml t="86400" v="2062" u="W" />
-      </sensml>
-    </data>
-  </message>
+<iq xml:lang="fr" to="…" type="result" id="ab63a">
+  <command xmlns="http://jabber.org/protocol/commands" node="get_load_curve" status="completed">
+    <x xmlns="jabber:x:data" type="result">
+      <title>Get production load curve data</title>
+      <field var="result" type="fixed" label="production load curve for 10284856584123"><value>Success</value></field>
+    </x>
+    <quoalise xmlns="urn:quoalise:0">
+      <data>
+        <meta>
+          <device type="electricity-meter">
+            <identifier authority="enedis" type="prm" value="10284856584123" />
+          </device>
+          <measurement>
+            <physical quantity="power" type="electrical" unit="W" />
+            <business graph="load-profile" direction="production" />
+            <aggregate type="average" />
+            <sampling interval="1800" />
+          </measurement>
+        </meta>
+        <sensml xmlns="urn:ietf:params:xml:ns:senml">
+          <senml bn="urn:dev:prm:10284856584123_production_load" bt="1600041600" t="0" v="245" bu="W" />
+          <senml t="1800" v="420" />
+          <senml t="3600" v="367" />
+          <senml t="5400" v="377" />
+          <!-- … -->
+        </sensml>
+      </data>
+    </quoalise>
+  </command>
+</iq>
 ```
 
 bt: « base time, » timestamp en UTC (seconde)
 t: offset en seconde à ajouter à bt
 bn: « base name, » nom à utiliser pour toutes les entrées suivantes
 
-Serveur:
+Ou si erreur :
 
 ```xml
-<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="ab09a">
-  <command xmlns="http://jabber.org/protocol/commands" node="get_consumption_load_curve" sessionid="1590355810.9193444-f78d9adfa5084a06ba7e99e5a8dea070" status="completed"/>
-</iq>
-```
-
-Ou si erreur
-
-Serveur:
-
-```xml
-<iq xml:lang="fr" to="cyril_lugan@liberasys.com/PsiMac" type="result" id="ab3ba">
-  <command xmlns="http://jabber.org/protocol/commands" node="get_consumption_load_curve" sessionid="1590358216.588861-5b1fae28750f4e93a2d36172cde882c1" status="completed">
-    <note type="error">{
-    "error": "STM-ERR-0000020",
-    "error_description": "no measure found for this usage point"
-}</note>
-  </command>
+<iq xml:lang="en" to="…" type="error" id="ab63a">
+   <error type="cancel">
+       <undefined-condition xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/>
+       <text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">The requested period cannot be anterior to the meter&apos;s last activation date</text>
+       <upstream-error xmlns="urn:quoalise:0" issuer="enedis-data-connect" code="ADAM-ERR0123" />
+   </error>
 </iq>
 ```
