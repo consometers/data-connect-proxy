@@ -24,8 +24,7 @@ class XmppInterface(ClientXMPP):
         self.register_plugin('xep_0199', {'keepalive': True, 'frequency':15})
 
         self.authorize_uri_handler = AuthorizeUriCommandHandler(self, make_authorize_uri)
-        self.consumption_load_curve_handler = LoadCurveCommandHandler(self, get_load_curve, 'consumption')
-        self.production_load_curve_handler = LoadCurveCommandHandler(self, get_load_curve, 'production')
+        self.load_curve_handler = LoadCurveCommandHandler(self, get_load_curve)
 
     def session_start(self, event):
         self.send_presence()
@@ -46,13 +45,14 @@ class XmppInterface(ClientXMPP):
                                      name='Request authorize URI',
                                      handler=self.authorize_uri_handler.handle_request)
 
+        # TODO deprecated, replaced with get_load_curve
         self['xep_0050'].add_command(node='get_consumption_load_curve',
                                      name='Get consumption load curve',
-                                     handler=self.consumption_load_curve_handler.handle_request)
+                                     handler=self.load_curve_handler.handle_request)
 
-        self['xep_0050'].add_command(node='get_production_load_curve',
-                                     name='Get production load curve',
-                                     handler=self.production_load_curve_handler.handle_request)
+        self['xep_0050'].add_command(node='get_load_curve',
+                                     name='Get load curve',
+                                     handler=self.load_curve_handler.handle_request)
 
     def notify_authorize_complete(self, dest, usage_points, state):
 
@@ -161,24 +161,31 @@ class AuthorizeUriCommandHandler:
 
 class LoadCurveCommandHandler:
 
-    def __init__(self, xmpp_client, get_load_curve, direction):
+    def __init__(self, xmpp_client, get_load_curve):
 
         self.xmpp = xmpp_client
         self.get_load_curve = get_load_curve
-        self.direction = direction
 
     def handle_request(self, iq, session):
 
         if iq['command'].xml: # has subelements
             return self.handle_submit(session['payload'], session)
 
-        form = self.xmpp['xep_0004'].make_form(ftype='form', title=f'Get {self.direction} load curve data')
+        form = self.xmpp['xep_0004'].make_form(ftype='form', title=f'Get load curve data')
 
         form.addField(var='usage_point_id',
                       ftype='text-single',
                       label='Usage point',
                       required=True,
                       value='')
+
+        form.addField(var='direction',
+                      ftype='list-single',
+                      label='Direction',
+                      options=[{'label': 'Consumption', 'value': 'consumption'},
+                               {'label': 'Production', 'value': 'production'}],
+                      required=True,
+                      value='consumption')
 
         start_date = DataConnect.date_to_isostring(dt.datetime.today() - dt.timedelta(days=1))
         end_date = DataConnect.date_to_isostring(dt.datetime.today())
@@ -208,13 +215,18 @@ class LoadCurveCommandHandler:
         start_date = payload['values']['start_date']
         end_date = payload['values']['end_date']
 
+        if 'direction' in payload['values']:
+            direction = payload['values']['direction']
+        else:
+            direction = 'consumption'
+
         try:
-            data = self.get_load_curve(self.direction, session['from'].bare, usage_point_id, start_date, end_date)
+            data = self.get_load_curve(direction, session['from'].bare, usage_point_id, start_date, end_date)
         except DataConnectError as e:
             return self.fail_with(e.message, e.code, session)
         print(data)
 
-        form = self.xmpp['xep_0004'].make_form(ftype='result', title=f"Get {self.direction} load curve data")
+        form = self.xmpp['xep_0004'].make_form(ftype='result', title=f"Get {direction} load curve data")
 
         # TODO can't get reports to show properly on gajim
         # form.add_reported('result', ftype='fixed', label=f'Consumption load curve for {usage_point_id}')
@@ -223,7 +235,7 @@ class LoadCurveCommandHandler:
 
         form.addField(var='result',
                       ftype='fixed',
-                      label=f'{self.direction} load curve for {usage_point_id}',
+                      label=f'{direction} load curve for {usage_point_id}',
                       value=f"Success")
 
         session['next'] = None
@@ -273,7 +285,7 @@ class LoadCurveCommandHandler:
         measurement = ET.Element('measurement')
         meta.append(measurement)
         measurement.append(ET.Element('physical', attrib={'quantity': "power", 'type': "electrical", 'unit': "W"}))
-        measurement.append(ET.Element('business', graph="load-profile", direction=self.direction))
+        measurement.append(ET.Element('business', graph="load-profile", direction=direction))
         measurement.append(ET.Element('aggregate', attrib={'type': "average"}))
         measurement.append(ET.Element('sampling', interval="1800"))
 
@@ -292,7 +304,7 @@ class LoadCurveCommandHandler:
             t = t - bt
             if first:
                 senml = ET.Element('senml',
-                                   bn=f"urn:dev:prm:{usage_point_id}_{self.direction}_load",
+                                   bn=f"urn:dev:prm:{usage_point_id}_{direction}_load",
                                    bt=str(bt), t=str(t), v=str(v), bu='W')
                 first = False
             else:
