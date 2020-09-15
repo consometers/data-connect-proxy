@@ -205,9 +205,9 @@ class DataConnectProxy:
 
         return access_token, is_sandbox
 
-    def get_consumption_load_curve(self, jid, usage_point_id, start_date, end_date):
+    def get_load_curve(self, direction, jid, usage_point_id, start_date, end_date):
         access_token, is_sandbox = self.get_access_token(jid, usage_point_id)
-        data = self.get_data_connect(is_sandbox).get_consumption_load_curve(usage_point_id, start_date, end_date, access_token)
+        data = self.get_data_connect(is_sandbox).get_load_curve(direction, usage_point_id, start_date, end_date, access_token)
         return data
 
 if __name__ == '__main__':
@@ -232,7 +232,7 @@ if __name__ == '__main__':
 
     xmpp = XmppInterface(config.XMPP_JID, config.XMPP_PASSWORD,
                          proxy.register_authorize_description,
-                         proxy.get_consumption_load_curve)
+                         proxy.get_load_curve)
 
     proxy.xmpp_interface = xmpp # TODO this is ugly
     web_interface.app.data_connect_proxy = proxy # TODO this is ugly

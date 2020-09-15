@@ -14,7 +14,7 @@ import json
 
 class XmppInterface(ClientXMPP):
 
-    def __init__(self, jid, password, make_authorize_uri, get_consumption_load_curve):
+    def __init__(self, jid, password, make_authorize_uri, get_load_curve):
         ClientXMPP.__init__(self, jid, password)
 
         self.add_event_handler("session_start", self.session_start)
@@ -24,7 +24,8 @@ class XmppInterface(ClientXMPP):
         self.register_plugin('xep_0199', {'keepalive': True, 'frequency':15})
 
         self.authorize_uri_handler = AuthorizeUriCommandHandler(self, make_authorize_uri)
-        self.consumption_load_curve_handler = ConsumptionLoadCurveCommandHandler(self, get_consumption_load_curve)
+        self.consumption_load_curve_handler = LoadCurveCommandHandler(self, get_load_curve, 'consumption')
+        self.production_load_curve_handler = LoadCurveCommandHandler(self, get_load_curve, 'production')
 
     def session_start(self, event):
         self.send_presence()
@@ -48,6 +49,10 @@ class XmppInterface(ClientXMPP):
         self['xep_0050'].add_command(node='get_consumption_load_curve',
                                      name='Get consumption load curve',
                                      handler=self.consumption_load_curve_handler.handle_request)
+
+        self['xep_0050'].add_command(node='get_production_load_curve',
+                                     name='Get production load curve',
+                                     handler=self.production_load_curve_handler.handle_request)
 
     def notify_authorize_complete(self, dest, usage_points, state):
 
@@ -154,19 +159,20 @@ class AuthorizeUriCommandHandler:
 
         return session
 
-class ConsumptionLoadCurveCommandHandler:
+class LoadCurveCommandHandler:
 
-    def __init__(self, xmpp_client, get_consumption_load_curve):
+    def __init__(self, xmpp_client, get_load_curve, direction):
 
         self.xmpp = xmpp_client
-        self.get_consumption_load_curve = get_consumption_load_curve
+        self.get_load_curve = get_load_curve
+        self.direction = direction
 
     def handle_request(self, iq, session):
 
         if iq['command'].xml: # has subelements
             return self.handle_submit(session['payload'], session)
 
-        form = self.xmpp['xep_0004'].make_form(ftype='form', title='Get consumption load curve data')
+        form = self.xmpp['xep_0004'].make_form(ftype='form', title=f'Get {self.direction} load curve data')
 
         form.addField(var='usage_point_id',
                       ftype='text-single',
@@ -203,12 +209,12 @@ class ConsumptionLoadCurveCommandHandler:
         end_date = payload['values']['end_date']
 
         try:
-            data = self.get_consumption_load_curve(session['from'].bare, usage_point_id, start_date, end_date)
+            data = self.get_load_curve(self.direction, session['from'].bare, usage_point_id, start_date, end_date)
         except DataConnectError as e:
             return self.fail_with(e.message, e.code, session)
         print(data)
 
-        form = self.xmpp['xep_0004'].make_form(ftype='result', title="Get consumption load curve data")
+        form = self.xmpp['xep_0004'].make_form(ftype='result', title=f"Get {self.direction} load curve data")
 
         # TODO can't get reports to show properly on gajim
         # form.add_reported('result', ftype='fixed', label=f'Consumption load curve for {usage_point_id}')
@@ -217,7 +223,7 @@ class ConsumptionLoadCurveCommandHandler:
 
         form.addField(var='result',
                       ftype='fixed',
-                      label=f'Consumption load curve for {usage_point_id}',
+                      label=f'{self.direction} load curve for {usage_point_id}',
                       value=f"Success")
 
         session['next'] = None
@@ -267,7 +273,7 @@ class ConsumptionLoadCurveCommandHandler:
         measurement = ET.Element('measurement')
         meta.append(measurement)
         measurement.append(ET.Element('physical', attrib={'quantity': "power", 'type': "electrical", 'unit': "W"}))
-        measurement.append(ET.Element('business', graph="load-profile", direction="consumption"))
+        measurement.append(ET.Element('business', graph="load-profile", direction=self.direction))
         measurement.append(ET.Element('aggregate', attrib={'type': "average"}))
         measurement.append(ET.Element('sampling', interval="1800"))
 
@@ -286,7 +292,7 @@ class ConsumptionLoadCurveCommandHandler:
             t = t - bt
             if first:
                 senml = ET.Element('senml',
-                                   bn=f"urn:dev:prm:{usage_point_id}_consumption_load",
+                                   bn=f"urn:dev:prm:{usage_point_id}_{self.direction}_load",
                                    bt=str(bt), t=str(t), v=str(v), bu='W')
                 first = False
             else:

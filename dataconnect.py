@@ -69,7 +69,10 @@ class DataConnect():
             except KeyError as e:
                 raise DataConnectError(r.text)
 
-    def get_consumption_load_curve(self, usage_point_id, start_date, end_date, access_token):
+    def get_load_curve(self, direction, usage_point_id, start_date, end_date, access_token):
+
+        if not direction in ['consumption', 'production']:
+            raise ValueError(f'Unexpected load curve direction: {direction}')
 
         start_date = self.date_to_isostring(start_date)
         end_date = self.date_to_isostring(end_date)
@@ -81,7 +84,7 @@ class DataConnect():
         }
         hed = {'Authorization': 'Bearer ' + access_token}
 
-        r = requests.get(self.api_endpoint + "/v4/metering_data/consumption_load_curve", params=params, headers=hed)
+        r = requests.get(f"{self.api_endpoint}/v4/metering_data/{direction}_load_curve", params=params, headers=hed)
 
         if r.status_code == 200:
             return r.json()
