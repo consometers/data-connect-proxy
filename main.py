@@ -210,6 +210,11 @@ class DataConnectProxy:
         data = self.get_data_connect(is_sandbox).get_load_curve(direction, usage_point_id, start_date, end_date, access_token)
         return data
 
+    def get_daily(self, direction, jid, usage_point_id, start_date, end_date):
+        access_token, is_sandbox = self.get_access_token(jid, usage_point_id)
+        data = self.get_data_connect(is_sandbox).get_daily(direction, usage_point_id, start_date, end_date, access_token)
+        return data
+
 if __name__ == '__main__':
 
     data_connect = DataConnect(config.DATACONNECT_ID,
@@ -232,7 +237,8 @@ if __name__ == '__main__':
 
     xmpp = XmppInterface(config.XMPP_JID, config.XMPP_PASSWORD,
                          proxy.register_authorize_description,
-                         proxy.get_load_curve)
+                         proxy.get_load_curve,
+                         proxy.get_daily)
 
     proxy.xmpp_interface = xmpp # TODO this is ugly
     web_interface.app.data_connect_proxy = proxy # TODO this is ugly

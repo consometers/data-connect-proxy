@@ -12,9 +12,21 @@ import config
 from dataconnect import DataConnect, DataConnectError
 import json
 
+def fail_with(message, code):
+
+    args = {'issuer': 'enedis-data-connect'} # TODO directly use a xml ns?
+    if code is not None:
+        args['code'] = code
+
+    raise XMPPError(extension="upstream-error",
+                    extension_ns="urn:quoalise:0",
+                    extension_args=args,
+                    text=message,
+                    etype="cancel")
+
 class XmppInterface(ClientXMPP):
 
-    def __init__(self, jid, password, make_authorize_uri, get_load_curve):
+    def __init__(self, jid, password, make_authorize_uri, get_load_curve, get_daily):
         ClientXMPP.__init__(self, jid, password)
 
         self.add_event_handler("session_start", self.session_start)
@@ -25,6 +37,7 @@ class XmppInterface(ClientXMPP):
 
         self.authorize_uri_handler = AuthorizeUriCommandHandler(self, make_authorize_uri)
         self.load_curve_handler = LoadCurveCommandHandler(self, get_load_curve)
+        self.daily_handler = DailyCommandHandler(self, get_daily)
 
     def session_start(self, event):
         self.send_presence()
@@ -53,6 +66,10 @@ class XmppInterface(ClientXMPP):
         self['xep_0050'].add_command(node='get_load_curve',
                                      name='Get load curve',
                                      handler=self.load_curve_handler.handle_request)
+
+        self['xep_0050'].add_command(node='get_daily',
+                                     name='Get daily data',
+                                     handler=self.daily_handler.handle_request)
 
     def notify_authorize_complete(self, dest, usage_points, state):
 
@@ -223,7 +240,8 @@ class LoadCurveCommandHandler:
         try:
             data = self.get_load_curve(direction, session['from'].bare, usage_point_id, start_date, end_date)
         except DataConnectError as e:
-            return self.fail_with(e.message, e.code, session)
+            # TODO does session needs cleanup?
+            return fail_with(e.message, e.code)
         print(data)
 
         form = self.xmpp['xep_0004'].make_form(ftype='result', title=f"Get {direction} load curve data")
@@ -321,18 +339,134 @@ class LoadCurveCommandHandler:
 
         return session
 
-    def fail_with(self, message, code, session):
+class DailyCommandHandler:
 
-        # TODO clean session?
-        # session['payload'] = None
-        # session['next'] = None
+    def __init__(self, xmpp_client, get_daily):
 
-        args = {'issuer': 'enedis-data-connect'} # TODO directly use a xml ns?
-        if code is not None:
-            args['code'] = code
+        self.xmpp = xmpp_client
+        self.get_daily = get_daily
 
-        raise XMPPError(extension="upstream-error",
-                        extension_ns="urn:quoalise:0",
-                        extension_args=args,
-                        text=message,
-                        etype="cancel")
+    def handle_request(self, iq, session):
+
+        if iq['command'].xml: # has subelements
+            return self.handle_submit(session['payload'], session)
+
+        form = self.xmpp['xep_0004'].make_form(ftype='form', title=f'Get daily data')
+
+        form.addField(var='usage_point_id',
+                      ftype='text-single',
+                      label='Usage point',
+                      required=True,
+                      value='')
+
+        form.addField(var='direction',
+                      ftype='list-single',
+                      label='Direction',
+                      options=[{'label': 'Consumption', 'value': 'consumption'},
+                               {'label': 'Production', 'value': 'production'}],
+                      required=True,
+                      value='consumption')
+
+        start_date = DataConnect.date_to_isostring(dt.datetime.today() - dt.timedelta(days=30))
+        end_date = DataConnect.date_to_isostring(dt.datetime.today() - dt.timedelta(days=15))
+
+        form.addField(var='start_date',
+                      ftype='text-single',
+                      label='Start date',
+                      desc=' Au format YYYY-MM-DD',
+                      required=True,
+                      value=start_date)
+
+        form.addField(var='end_date',
+                      ftype='text-single',
+                      label='End date',
+                      desc=' Au format YYYY-MM-DD',
+                      required=True,
+                      value=end_date)
+
+        session['payload'] = form
+        session['next'] = self.handle_submit
+
+        return session
+
+    def handle_submit(self, payload, session):
+
+        usage_point_id = payload['values']['usage_point_id']
+        start_date = payload['values']['start_date']
+        end_date = payload['values']['end_date']
+        direction = payload['values']['direction']
+
+        try:
+            data = self.get_daily(direction, session['from'].bare, usage_point_id, start_date, end_date)
+        except DataConnectError as e:
+            return fail_with(e.message, e.code)
+        print(data)
+
+        form = self.xmpp['xep_0004'].make_form(ftype='result', title=f"Get daily {direction}")
+
+        # TODO can't get reports to show properly on gajim
+        # form.add_reported('result', ftype='fixed', label=f'Consumption load curve for {usage_point_id}')
+        # form.add_item({'result': 'Success'})
+        # TODO Psi won’t show session['notes'] = [('info', "…")]
+
+        form.addField(var='result',
+                      ftype='fixed',
+                      label=f'{direction} load curve for {usage_point_id}',
+                      value=f"Success")
+
+        session['next'] = None
+
+        class Quoalise(ElementBase):
+          name = 'quoalise'
+          namespace = 'urn:quoalise:0'
+
+        quoalise = Quoalise()
+
+        xmldata = ET.Element('data')
+        quoalise.xml.append(xmldata)
+
+        meta = ET.Element('meta')
+        xmldata.append(meta)
+
+        device = ET.Element('device', attrib={'type': "electricity-meter"})
+        meta.append(device)
+        device.append(ET.Element('identifier', attrib={'authority': "enedis", 'type': "prm", 'value': usage_point_id}))
+
+        measurement = ET.Element('measurement')
+        meta.append(measurement)
+        measurement.append(ET.Element('physical', attrib={'quantity': "energy", 'type': "electrical", 'unit': "Wh"}))
+        measurement.append(ET.Element('business', direction=direction))
+        measurement.append(ET.Element('aggregate', attrib={'type': "sum"}))
+        measurement.append(ET.Element('sampling', interval="86400"))
+
+        sensml = ET.Element('sensml', xmlns="urn:ietf:params:xml:ns:senml")
+        xmldata.append(sensml)
+
+        meter_reading = data["meter_reading"]
+        bt = DataConnect.date(payload['values']['start_date'])
+        bt = int(bt.replace(tzinfo=dt.timezone.utc).timestamp())
+        measurements = meter_reading["interval_reading"]
+        first = True
+        for measurement in measurements:
+            v = str(measurement['value'])
+            t = DataConnect.date(measurement["date"])
+            t = int(t.replace(tzinfo=dt.timezone.utc).timestamp())
+            t = t - bt
+            if first:
+                senml = ET.Element('senml',
+                                   bn=f"urn:dev:prm:{usage_point_id}_daily_{direction}",
+                                   bt=str(bt), t=str(t), v=str(v), bu='Wh')
+                first = False
+            else:
+                senml = ET.Element('senml', t=str(t), v=str(v))
+            sensml.append(senml)
+
+        # TODO keep a way, like a checkbox to get a message instead of embedding data in the iq response
+        # msg = self.xmpp.make_message(mto=session['from'].bare,
+        #                             msubject=f"Consumption load curve for {usage_point_id}")
+        # msg.append(quoalise)
+        #msg.send()
+
+        session['payload'] = [form, quoalise]
+
+        return session

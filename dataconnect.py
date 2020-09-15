@@ -95,6 +95,36 @@ class DataConnect():
             except KeyError as e:
                 raise DataConnectError(r.text)
 
+    # Cette sous ressource renvoie les valeurs correspondant à la consommation quotidienne (en Wh)
+    # sur chaque jour de la période demandée. Chaque valeur est daté. Un appel peut porter sur des
+    # données datant au maximum de 36 mois et 15 jours avant la date d’appel.
+
+    def get_daily(self, direction, usage_point_id, start_date, end_date, access_token):
+
+        if not direction in ['consumption', 'production']:
+            raise ValueError(f'Unexpected load curve direction: {direction}')
+
+        start_date = self.date_to_isostring(start_date)
+        end_date = self.date_to_isostring(end_date)
+
+        params = {
+            'usage_point_id': usage_point_id,
+            'start': start_date,
+            'end': end_date
+        }
+        hed = {'Authorization': 'Bearer ' + access_token}
+
+        r = requests.get(f"{self.api_endpoint}/v4/metering_data/daily_{direction}", params=params, headers=hed)
+
+        if r.status_code == 200:
+            return r.json()
+        else:
+            try:
+                error = r.json()
+                raise DataConnectError(error['error_description'], code=error['error'])
+            except KeyError as e:
+                raise DataConnectError(r.text)
+
     @staticmethod
     def date_to_isostring(date):
         if isinstance(date, dt.date):
