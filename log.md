@@ -45,46 +45,6 @@ Il est possible de rajouter à cette adresse une durée et un adresse de redirec
 https://srv5.breizh-sen2.eu/dataconnect-proxy/authorize?id=ad35a140&duration=P1Y&redirect_uri=http%3A%2F%2Fperdu.com%3Fuser%3Dplop
 ```
 
-Pour utiliser le bac à sable, il est possible d’ajouter un paramètre `test_client` :
-
-```
-https://srv5.breizh-sen2.eu/dataconnect-proxy/authorize?id=ad35a140&duration=P1Y&test_client=0
-```
-
-Rappel des profils clients de test Enedis :
-
-```
-0: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge.
-Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
-
-1: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge.
-Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service le 27 août 2019.
-
-2: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il n’a pas activé la courbe de charge.
-Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
-
-3: Client qui possède un point de livraison de consommation et un point de livraison de production pour lesquels il a activé les courbes de charge.
-Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.
-
-4: Client qui possède qu’un  seul point de livraison de consommation pour lequel il a activé la courbe de charge.
-Ses données présentent des « trous » de données les mardis et mercredis et son compteur a été mis en service au début
-du déploiement Linky
-
-5: Client qui possède qu’un seul point de livraison de production pour lequel il a activé la courbe de charge.
-Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
-
-6: Client qui possède un point de livraison d’ auto-consommation pour lequel il a activé la courbe de charge en production et en consommation.
-Pour chaque point prélevé, lorsque la consommation est supérieur à la production les données de consommation remontées correspondent à la consommation moins la production et la production est nulle. Inversement lorsque la production est supérieure à la consommation.
-Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
-
-7: Client qui possède trois points de livraison de consommation  pour lesquels il a activé les courbes de charge.
-Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.
-
-8: Client qui donne son consentement mais le révoque immédiatement après l’avoir donné.
-
-9: Client qui refuse systématiquement de donner son consentement.
-```
-
 Quand l’utilisateur à exprimé son consentement, redirection web vers redirect uri + envoi d’un message xmpp
 
 ```
@@ -104,13 +64,51 @@ Serveur:
 </message>
 ```
 
-## API load curve
+Utiliser le paramètre `test_client` pour tester sur le bac à sable :
+
+```
+https://srv5.breizh-sen2.eu/dataconnect-proxy/authorize?id=ad35a140&duration=P1Y&test_client=0
+```
+
+Cela permet d’accéder aux profils clients de test Enedis :
+
+`0`: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+`1`: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service le 27 août 2019.
+
+`2`: Client qui ne possède qu’un seul point de livraison de consommation pour lequel il n’a pas activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+`3`: Client qui possède un point de livraison de consommation et un point de livraison de production pour lesquels il a activé les courbes de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.
+
+`4`: Client qui possède qu’un  seul point de livraison de consommation pour lequel il a activé la courbe de charge.
+Ses données présentent des « trous » de données les mardis et mercredis et son compteur a été mis en service au début
+du déploiement Linky
+
+`5`: Client qui possède qu’un seul point de livraison de production pour lequel il a activé la courbe de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+`6`: Client qui possède un point de livraison d’ auto-consommation pour lequel il a activé la courbe de charge en production et en consommation.
+Pour chaque point prélevé, lorsque la consommation est supérieur à la production les données de consommation remontées correspondent à la consommation moins la production et la production est nulle. Inversement lorsque la production est supérieure à la consommation.
+Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.
+
+`7`: Client qui possède trois points de livraison de consommation  pour lesquels il a activé les courbes de charge.
+Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.
+
+`8`: Client qui donne son consentement mais le révoque immédiatement après l’avoir donné.
+
+`9`: Client qui refuse systématiquement de donner son consentement.
+
+## API Courbe de charge
 
 Client:
 
 ```xml
 <iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="…" type="set" id="ab63a">
-   <command xmlns="http://jabber.org/protocol/commands" node="get_consumption_load_curve" action="execute">
+   <command xmlns="http://jabber.org/protocol/commands" node="get_load_curve" action="execute">
       <x xmlns="jabber:x:data" type="submit">
          <field var="usage_point_id" type="text-single">
             <value>10284856584123</value>
@@ -129,9 +127,9 @@ Client:
 </iq>
 ```
 
-Le champs direction peut prendre les valeurs `consumption` et `production`.
+Le champs `direction` peut prendre les valeurs `consumption` et `production`.
 
-Le serveur renvoie les données en réponse à l'iq, au format SENML :
+Le serveur renvoie les données en réponse à l'`iq`, au format SENML :
 
 ```xml
 <iq xml:lang="fr" to="…" type="result" id="ab63a">
@@ -166,9 +164,8 @@ Le serveur renvoie les données en réponse à l'iq, au format SENML :
 </iq>
 ```
 
-bt: « base time, » timestamp en UTC (seconde)
-t: offset en seconde à ajouter à bt
-bn: « base name, » nom à utiliser pour toutes les entrées suivantes
+`bt`: « base time, » timestamp en UTC (seconde)
+`t`: offset en seconde à ajouter à `bt`
 
 Ou si erreur :
 
