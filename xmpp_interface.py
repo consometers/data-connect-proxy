@@ -275,7 +275,7 @@ class ConsumptionLoadCurveCommandHandler:
         xmldata.append(sensml)
 
         meter_reading = data["meter_reading"]
-        bt = DataConnect.date(meter_reading["start"])
+        bt = DataConnect.date(payload['values']['start_date'])
         bt = int(bt.replace(tzinfo=dt.timezone.utc).timestamp())
         measurements = meter_reading["interval_reading"]
         first = True
@@ -283,11 +283,8 @@ class ConsumptionLoadCurveCommandHandler:
             v = str(measurement['value'])
             t = DataConnect.datetime(measurement["date"])
             t = int(t.replace(tzinfo=dt.timezone.utc).timestamp())
-
             t = t - bt
- 
             if first:
-
                 senml = ET.Element('senml',
                                    bn=f"urn:dev:prm:{usage_point_id}_consumption_load",
                                    bt=str(bt), t=str(t), v=str(v), bu='W')
