@@ -54,7 +54,7 @@ http://perdu.com?user=plop&usage_points=64975835695673,63695879465986,2231554695
 Serveur:
 
 ```xml
-<message type="chat" to="cyril_lugan@liberasys.com" id="1f72f82198b84deeaac85edbe43b024b" xml:lang="en">
+<message type="chat" to="…" id="1f72f82198b84deeaac85edbe43b024b" xml:lang="en">
   <origin-id xmlns="urn:xmpp:sid:0" id="1f72f82198b84deeaac85edbe43b024b"/>
   <body>Access granted for usage points 22516914714270</body>
   <x xmlns="https://consometers.org/dataconnect#authorize">
@@ -176,5 +176,67 @@ Ou si erreur :
        <text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">The requested period cannot be anterior to the meter&apos;s last activation date</text>
        <upstream-error xmlns="urn:quoalise:0" issuer="enedis-data-connect" code="ADAM-ERR0123" />
    </error>
+</iq>
+```
+
+## API consommation / production quotidienne
+
+Client :
+
+```xml
+<iq xml:lang="en" to="dataconnect-proxy-dev@breizh-sen2.eu/proxy" from="…" type="set" id="5c8f743b-0f90-4469-aadf-98a88834d273">
+  <command xmlns="http://jabber.org/protocol/commands" node="get_daily" action="execute">
+    <x xmlns="jabber:x:data" type="submit">
+      <field var="usage_point_id" type="text-single" label="Usage point">
+        <value>11453290002823</value>
+      </field>
+      <field var="direction" type="list-single">
+        <value>consumption</value>
+      </field>
+      <field var="start_date" type="text-single">
+        <value>2020-08-16</value>
+      </field>
+      <field var="end_date" type="text-single">
+        <value>2020-08-31</value>
+      </field>
+    </x>
+  </command>
+</iq>
+```
+
+Serveur :
+
+```xml
+<iq xml:lang="en" to="…" type="result" id="5c8f743b-0f90-4469-aadf-98a88834d273">
+  <command xmlns="http://jabber.org/protocol/commands" node="get_daily" sessionid="1600176040.6601713-4c7b5487477b48a5b7fdddd57bf8a651" status="completed">
+    <x xmlns="jabber:x:data" type="result">
+      <title>Get daily consumption</title>
+      <field var="result" type="fixed" label="consumption load curve for 11453290002823">
+        <value>Success</value>
+      </field>
+    </x>
+    <quoalise xmlns="urn:quoalise:0">
+      <data>
+        <meta>
+          <device type="electricity-meter">
+            <identifier authority="enedis" type="prm" value="11453290002823" />
+          </device>
+          <measurement>
+            <physical quantity="energy" type="electrical" unit="Wh" />
+            <business direction="consumption" />
+            <aggregate type="sum" />
+            <sampling interval="86400" />
+          </measurement>
+        </meta>
+        <sensml xmlns="urn:ietf:params:xml:ns:senml">
+          <senml bn="urn:dev:prm:11453290002823_daily_consumption" bt="1597536000" t="0" v="16433" bu="Wh" />
+          <senml t="86400" v="15081" />
+          <senml t="172800" v="14664" />
+           <!-- … -->
+          <senml t="1209600" v="16330" />
+        </sensml>
+      </data>
+    </quoalise>
+  </command>
 </iq>
 ```
