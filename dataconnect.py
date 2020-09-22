@@ -1,5 +1,6 @@
 import requests
 import urllib
+import json
 
 import datetime as dt
 import pytz
@@ -66,7 +67,7 @@ class DataConnect():
             try:
                 error = r.json()
                 raise DataConnectError(error['error_description'], code=error['error'])
-            except KeyError as e:
+            except (KeyError, json.decoder.JSONDecodeError) as e:
                 raise DataConnectError(r.text)
 
     def get_load_curve(self, direction, usage_point_id, start_date, end_date, access_token):
@@ -92,7 +93,7 @@ class DataConnect():
             try:
                 error = r.json()
                 raise DataConnectError(error['error_description'], code=error['error'])
-            except KeyError as e:
+            except (KeyError, json.decoder.JSONDecodeError) as e:
                 raise DataConnectError(r.text)
 
     # Cette sous ressource renvoie les valeurs correspondant à la consommation quotidienne (en Wh)
@@ -122,7 +123,7 @@ class DataConnect():
             try:
                 error = r.json()
                 raise DataConnectError(error['error_description'], code=error['error'])
-            except KeyError as e:
+            except (KeyError, json.decoder.JSONDecodeError) as e:
                 raise DataConnectError(r.text)
 
     @staticmethod
