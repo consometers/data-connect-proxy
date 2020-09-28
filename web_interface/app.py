@@ -4,6 +4,7 @@ import os
 import threading
 import time
 import asyncio
+from urllib.parse import urlencode
 
 from aiohttp import web
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -22,6 +23,20 @@ data_connect_proxy = None
 
 def handle_authorize_redirect(request):
 
+    if 'state' in request.query:
+        state = request.query['state']
+    else:
+        raise web.HTTPInternalServerError(text=f"'state' parameter is expected")
+
+    # Temporarily use the proxy for other web apps and tests
+    # FIXME(cyril) Remove / Define in config file  
+    if 'bmhs' in state:
+        if 'local' in state:
+            redirect_uri = 'http://localhost:8080/smarthome-application/'
+        else:
+            redirect_uri = 'https://dc.breizh-sen2.eu/'
+        raise web.HTTPFound(redirect_uri + 'dataConnect/redirect?' + urlencode(request.query))
+
     if 'code' in request.query:
         code = request.query['code']
     else:
@@ -34,11 +49,6 @@ def handle_authorize_redirect(request):
         template = jinga.get_template('redirect_error.html')
         html = template.render()
         return web.Response(body=html, content_type='text/html')
-
-    if 'state' in request.query:
-        state = request.query['state']
-    else:
-        raise web.HTTPInternalServerError(text=f"'state' parameter is expected")
 
     try:
         ret = data_connect_proxy.authorize_request_callback(code, state)
