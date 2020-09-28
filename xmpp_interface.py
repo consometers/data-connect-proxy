@@ -242,7 +242,7 @@ class LoadCurveCommandHandler:
         except DataConnectError as e:
             # TODO does session needs cleanup?
             return fail_with(e.message, e.code)
-        print(data)
+        # print(data)
 
         form = self.xmpp['xep_0004'].make_form(ftype='result', title=f"Get {direction} load curve data")
 
