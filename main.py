@@ -167,6 +167,8 @@ class DataConnectProxy:
         jid = authorize_request['jid']
         token_id = self.tokens.set(res['access_token'], res['refresh_token'], res['expires_in'], is_sandbox)
 
+        logging.info(f"New refresh token: {res['usage_point_id']}, {res['refresh_token']}")
+
         usage_points = res['usage_points_id'].split(',')
 
         for usage_point in usage_points:
@@ -196,8 +198,9 @@ class DataConnectProxy:
 
         # TODO time margin
         if dt.datetime.now() > token['expires_at']:
-            print("A refresh token is needed")
+            logging.info(f"A refresh token is needed")
             res = self.get_data_connect(is_sandbox).get_access_token(refresh_token=token['refresh_token'])
+            logging.info(f"Update refresh token: {usage_point_id}, {token['refresh_token']} -> {res['refresh_token']}")
             self.tokens.set(res['access_token'], res['refresh_token'], res['expires_in'], is_sandbox, token_id)
             access_token = res['access_token']
         else:

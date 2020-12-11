@@ -242,7 +242,7 @@ class LoadCurveCommandHandler:
         except DataConnectError as e:
             # TODO does session needs cleanup?
             return fail_with(e.message, e.code)
-        print(data)
+        # print(data)
 
         form = self.xmpp['xep_0004'].make_form(ftype='result', title=f"Get {direction} load curve data")
 
@@ -300,12 +300,11 @@ class LoadCurveCommandHandler:
         meta.append(device)
         device.append(ET.Element('identifier', attrib={'authority': "enedis", 'type': "prm", 'value': usage_point_id}))
 
-        measurement = ET.Element('measurement')
-        meta.append(measurement)
-        measurement.append(ET.Element('physical', attrib={'quantity': "power", 'type': "electrical", 'unit': "W"}))
-        measurement.append(ET.Element('business', graph="load-profile", direction=direction))
-        measurement.append(ET.Element('aggregate', attrib={'type': "average"}))
-        measurement.append(ET.Element('sampling', interval="1800"))
+        measurement_meta = ET.Element('measurement')
+        meta.append(measurement_meta)
+        measurement_meta.append(ET.Element('physical', attrib={'quantity': "power", 'type': "electrical", 'unit': "W"}))
+        measurement_meta.append(ET.Element('business', graph="load-profile", direction=direction))
+        measurement_meta.append(ET.Element('aggregate', attrib={'type': "average"}))
 
         sensml = ET.Element('sensml', xmlns="urn:ietf:params:xml:ns:senml")
         xmldata.append(sensml)
@@ -324,6 +323,7 @@ class LoadCurveCommandHandler:
                 senml = ET.Element('senml',
                                    bn=f"urn:dev:prm:{usage_point_id}_{direction}_load",
                                    bt=str(bt), t=str(t), v=str(v), bu='W')
+                measurement_meta.append(ET.Element('sampling', interval=measurement['interval_length']))
                 first = False
             else:
                 senml = ET.Element('senml', t=str(t), v=str(v))
@@ -437,7 +437,7 @@ class DailyCommandHandler:
         measurement.append(ET.Element('physical', attrib={'quantity': "energy", 'type': "electrical", 'unit': "Wh"}))
         measurement.append(ET.Element('business', direction=direction))
         measurement.append(ET.Element('aggregate', attrib={'type': "sum"}))
-        measurement.append(ET.Element('sampling', interval="86400"))
+        measurement.append(ET.Element('sampling', interval="P1D"))
 
         sensml = ET.Element('sensml', xmlns="urn:ietf:params:xml:ns:senml")
         xmldata.append(sensml)

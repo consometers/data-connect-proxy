@@ -2,8 +2,10 @@
 
 import os
 import threading
+import logging
 import time
 import asyncio
+from urllib.parse import urlencode
 
 from aiohttp import web
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -22,31 +24,48 @@ data_connect_proxy = None
 
 def handle_authorize_redirect(request):
 
-    if 'code' in request.query:
-        code = request.query['code']
-    else:
-        raise web.HTTPInternalServerError(text=f"'code' parameter is expected")
+    state = request.query.get('state', None)
 
-    # Handles the user refusing to give a conscent
-    # https://cyril.lu/dataconnect-proxy/redirect?code=403&error=access_denied&error_description=authorization_request_refused
-    # Unfortunately, we have no way to get the redirect uri since state is not returned
-    if code == '403':
-        template = jinga.get_template('redirect_error.html')
-        html = template.render()
-        return web.Response(body=html, content_type='text/html')
+    if state is None:
+        # There is no state information,
+        # we cannot link this redirect to a particular request
+        code = request.query.get('code', None)
+        error = request.query.get('error', None)
+        error_description = request.query.get('error_description', None)
+        # https://…/redirect?code=403&error=access_denied&error_description=authorization_request_refused
+        if code == '403':
+            return redirect_error(message='Vous n’avez pas autorisé Enedis à nous transmettre vos données.')
+        else:
+            # https://…/redirect?code=500&error=server_error&error_description=lincs-internal-server-error
+            message = f'{error} ({code}): {error_description}'
+            logging.error(f'Redirect Error: {message}')
+            return redirect_error(message=f'Erreur Enedis: {message}', go_back=True)
 
-    if 'state' in request.query:
-        state = request.query['state']
-    else:
-        raise web.HTTPInternalServerError(text=f"'state' parameter is expected")
+    # Temporarily use the proxy for other web apps and tests
+    # FIXME(cyril) Remove / Define in config file  
+    if 'bmhs' in state:
+        if 'local' in state:
+            redirect_uri = 'http://localhost:8080/smarthome-application/'
+        else:
+            redirect_uri = 'https://dc.breizh-sen2.eu/'
+        raise web.HTTPFound(redirect_uri + 'dataConnect/redirect?' + urlencode(request.query))
+
+    code = request.query.get('code', None)
+
+    if code is None:
+        logging.error(f'Redirect Error: code parameter is missing')
+        return redirect_error(message='Code parameter is missing', go_back=True)
 
     try:
         ret = data_connect_proxy.authorize_request_callback(code, state)
     except DataConnectError as e:
+        logging.error(f'Redirect Error: {e}')
         raise web.HTTPInternalServerError(text=str(e))
 
     if ret is None:
-        raise web.HTTPNotFound(f"state {state} is not known")
+        message = f"state {state} is not known"
+        logging.error(f'Redirect Error: {message}')
+        raise web.HTTPNotFound(message)
 
     redirect_uri = ret.get('redirect_uri')
     if redirect_uri:
@@ -63,6 +82,11 @@ def handle_authorize_redirect(request):
         template = jinga.get_template('redirect_ok.html')
         html = template.render(usage_points=ret["usage_points"])
         return web.Response(body=html, content_type='text/html')
+
+def redirect_error(message, go_back=False):
+    template = jinga.get_template('redirect_error.html')
+    html = template.render(message=message, go_back=go_back)
+    return web.Response(body=html, content_type='text/html')
 
 def handle_root(request):
     template = jinga.get_template('layout.html')
