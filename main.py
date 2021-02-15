@@ -167,7 +167,7 @@ class DataConnectProxy:
         jid = authorize_request['jid']
         token_id = self.tokens.set(res['access_token'], res['refresh_token'], res['expires_in'], is_sandbox)
 
-        logging.info(f"New refresh token: {res['usage_point_id']}, {res['refresh_token']}")
+        logging.info(f"New refresh token: {res['usage_points_id']}, {res['refresh_token']}")
 
         usage_points = res['usage_points_id'].split(',')
 
