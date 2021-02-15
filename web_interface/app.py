@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 from aiohttp import web
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from dataconnect import DataConnect, DataConnectError
+from dataconnect import DataConnect, DataConnectError, TEST_CLIENTS
 import config
 
 MY_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -109,9 +109,19 @@ def handle_authorize_description(request):
     user_state = None
 
     test_client_id = request.query.get('test_client', None)
+
+    if test_client_id is None:
+        test_client_description = None
+    elif not test_client_id in TEST_CLIENTS:
+        test_client_id = None
+        test_client_description = "test_client invalide"
+    else:
+        desc = TEST_CLIENTS[test_client_id]
+        test_client_description = f"Utilisation du bac à sable avec le profile client {test_client_id}: {desc}"
+
     authorize_uri = data_connect_proxy.register_authorize_request(redirect_uri, duration, description['jid'], user_state, test_client_id)
 
-    html = template.render(description=description, authorize_uri=authorize_uri)
+    html = template.render(description=description, authorize_uri=authorize_uri, test_client_description=test_client_description)
     return web.Response(body=html, content_type='text/html')
 
 app = web.Application()

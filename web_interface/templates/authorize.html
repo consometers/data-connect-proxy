@@ -5,6 +5,12 @@
 
 {% block content %}
 
+{% if test_client_description %}
+    <div class="alert alert-warning" role="alert">
+        {{ test_client_description }}
+    </div>
+{% endif %}
+
 <h4>{{ description.name }} souhaite accéder à vos données de consommation</h4>
 
 {% if description.service %}

@@ -157,6 +157,18 @@ class DataConnect():
 
         #print(paris_tz.localize(date).astimezone(pytz.utc).strftime("%s"))
 
+TEST_CLIENTS = {
+    "0": "Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge. Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.",
+    "1": "Client qui ne possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge. Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service le 27 août 2019.",
+    "2": "Client qui ne possède qu’un seul point de livraison de consommation pour lequel il n’a pas activé la courbe de charge. Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.",
+    "3": "Client qui possède un point de livraison de consommation et un point de livraison de production pour lesquels il a activé les courbes de charge. Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.",
+    "4": "Client qui possède qu’un seul point de livraison de consommation pour lequel il a activé la courbe de charge. Ses données présentent des « trous » de données les mardis et mercredis et son compteur a été mis en service au début du déploiement Linky",
+    "5": "Client qui possède qu’un seul point de livraison de production pour lequel il a activé la courbe de charge. Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.",
+    "6": "Client qui possède un point de livraison d’ auto-consommation pour lequel il a activé la courbe de charge en production et en consommation. Pour chaque point prélevé, lorsque la consommation est supérieur à la production les données de consommation remontées correspondent à la consommation moins la production et la production est nulle. Inversement lorsque la production est supérieure à la consommation. Ses données sont remontées de manière exacte (sans « trou » de données) et son compteur a été mis en service au début du déploiement Linky.",
+    "7": "Client qui possède trois points de livraison de consommation pour lesquels il a activé les courbes de charge. Ses données sont remontées de manière exacte (sans « trou » de données) et ses compteurs ont été mis en service au début du déploiement Linky.",
+    "8": "Client qui donne son consentement mais le révoque immédiatement après l’avoir donné.",
+    "9": "Client qui refuse systématiquement de donner son consentement."
+}
 
 if __name__ == '__main__':
 
