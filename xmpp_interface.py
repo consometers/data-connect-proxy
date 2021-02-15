@@ -311,13 +311,14 @@ class LoadCurveCommandHandler:
 
         meter_reading = data["meter_reading"]
         bt = DataConnect.date(payload['values']['start_date'])
-        bt = int(bt.replace(tzinfo=dt.timezone.utc).timestamp())
+        bt = int(bt.astimezone(pytz.utc).timestamp())
+
         measurements = meter_reading["interval_reading"]
         first = True
         for measurement in measurements:
             v = str(measurement['value'])
             t = DataConnect.datetime(measurement["date"])
-            t = int(t.replace(tzinfo=dt.timezone.utc).timestamp())
+            t = int(t.astimezone(pytz.utc).timestamp())
             t = t - bt
             if first:
                 senml = ET.Element('senml',
@@ -444,13 +445,13 @@ class DailyCommandHandler:
 
         meter_reading = data["meter_reading"]
         bt = DataConnect.date(payload['values']['start_date'])
-        bt = int(bt.replace(tzinfo=dt.timezone.utc).timestamp())
+        bt = int(bt.astimezone(pytz.utc).timestamp())
         measurements = meter_reading["interval_reading"]
         first = True
         for measurement in measurements:
             v = str(measurement['value'])
             t = DataConnect.date(measurement["date"])
-            t = int(t.replace(tzinfo=dt.timezone.utc).timestamp())
+            t = int(t.astimezone(pytz.utc).timestamp())
             t = t - bt
             if first:
                 senml = ET.Element('senml',
