@@ -3,6 +3,7 @@
 import logging
 import asyncio
 import datetime as dt
+import pytz
 
 from slixmpp import ClientXMPP
 from slixmpp.exceptions import XMPPError
