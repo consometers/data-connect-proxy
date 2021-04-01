@@ -5,6 +5,8 @@ import logging
 import json
 import os
 import asyncio
+import bleach
+import unittest
 
 import threading
 import datetime as dt
@@ -20,23 +22,45 @@ class AuthorizeDescriptions:
     def __init__(self):
         self.data = {}
 
-    def add(self, jid, name, service, processings):
+    # TODO rename service to desciption when switching to database
+    def add(self, jid, name, service, logo_url):
         while True:
             uid = str(uuid.uuid4())[:8]
             if not uid in self.data:
                 break
 
+        service = bleach.clean(service, bleach.sanitizer.ALLOWED_TAGS + ['p', 'br'])
+
         self.data[uid] = {
             'jid': jid,
             'name': name,
             'service': service,
-            'processings': processings
+            'logo_url': logo_url
         }
 
         return uid
 
     def get(self, uid):
         return self.data.get(uid)
+
+class AuthorizeDescriptionsTest(unittest.TestCase):
+
+    DEFAULT_JID = 'proxy-client@elec-expert.net'
+    DEFAULT_NAME = 'Elec Expert'
+
+    def setUp(self):
+        self.authorize_descriptions = AuthorizeDescriptions()
+
+    def test_sanitize_description(self):
+        html_desc = 'an <script>evil()</script> example'
+        html_desc_escaped = 'an &lt;script&gt;evil()&lt;/script&gt; example'
+        uid = self.authorize_descriptions.add(self.DEFAULT_JID, self.DEFAULT_NAME, html_desc)
+        self.assertEqual(self.authorize_descriptions.get(uid)['service'], html_desc_escaped)
+
+    def test_p_and_a_tags_are_not_sanitized(self):
+        html_desc = '<p>Description with <a href="#">link</a>.</p>'
+        uid = self.authorize_descriptions.add(self.DEFAULT_JID, self.DEFAULT_NAME, html_desc)
+        self.assertEqual(self.authorize_descriptions.get(uid)['service'], html_desc)
 
 class AuthorizeRequests:
 
@@ -107,9 +131,10 @@ class UsagePoints:
 
 class DataConnectProxy:
 
-    def __init__(self, data_connect_prod, data_connect_sandbox):
+    def __init__(self, data_connect_prod, data_connect_sandbox, web_interface_base_uri):
         self.data_connect_prod = data_connect_prod
         self.data_connect_sandbox = data_connect_sandbox
+        self.web_interface_base_uri = web_interface_base_uri
         self.tokens = Tokens()
         self.usage_points = UsagePoints()
         self.authorize_descriptions = AuthorizeDescriptions()
@@ -142,10 +167,10 @@ class DataConnectProxy:
             return self.data_connect_prod
 
 
-    def register_authorize_description(self, jid, name, service, processings):
+    def register_authorize_description(self, jid, name, service, logo_url):
 
-        uid = self.authorize_descriptions.add(jid, name, service, processings)
-        return f"{config.BASE_URI}/authorize?id={uid}"
+        uid = self.authorize_descriptions.add(jid, name, service, logo_url)
+        return os.path.join(self.web_interface_base_uri, f'authorize?id={uid}')
 
     def register_authorize_request(self, redirect_uri, duration, user_bare_jid, user_state, test_client_id=None):
 
@@ -230,7 +255,7 @@ if __name__ == '__main__':
                                        config.DATACONNECT_SANDBOX_REDIRECT_URI,
                                        sandbox=True)
 
-    proxy = DataConnectProxy(data_connect, data_connect_sandbox)
+    proxy = DataConnectProxy(data_connect, data_connect_sandbox, CONF['web_interface']['base_uri'])
 
     # Ideally use optparse or argparse to get JID,
     # password, and log level.

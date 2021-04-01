@@ -136,19 +136,25 @@ class AuthorizeUriCommandHandler:
         form.addField(var='name',
                       ftype='text-single',
                       label='Nom du service',
+                      required=True,
                       value="Elec Expert Demo")
 
+        form.addField(var='logo_url',
+                      ftype='text-single',
+                      label='URL pour le logo (https)',
+                      required=False,
+                      value="")
+
         # TODO add a value field for each line, see XEP-0004
-        form.addField(var='service',
+        form.addField(var='description',
                       ftype='text-multi',
                       label='Description du service',
-                      value='Nos experts analysent votre consommation d’électricité sur l’année précédente mesurée par votre compteur Linky.\n'+
-                            'Lors d’un rendez-vous téléphonique, nous vous ferons part de nos recommandations pour mieux maîtriser votre consommation.')
-
-        form.addField(var='processings',
-                      ftype='text-multi',
-                      label='Processings',
-                      value='Analyse votre consommation d’électricité\nAffichage de graphiques')
+                      required=True,
+                      value='<p>\n'+
+                            'Nos experts analysent votre consommation d’électricité sur l’année précédente mesurée par votre compteur Linky.<br/>\n'+
+                            'Lors d’un rendez-vous téléphonique, nous vous ferons part de nos recommandations pour mieux maîtriser votre consommation.\n'+
+                            '</p>\n'+
+                            '<p>Retrouvez plus de détails sur notre <a href="#">politique de confidentialité</a>.</p>')
 
         session['payload'] = form
         session['next'] = self.handle_submit
@@ -158,10 +164,10 @@ class AuthorizeUriCommandHandler:
     def handle_submit(self, payload, session):
 
         name = payload['values'].get('name', session['from'].bare)
-        service = payload['values'].get('service', None)
-        processings = payload['values'].get('processings', None)
+        description = payload['values'].get('description', None)
+        logo_url = payload['values'].get('logo_url', None)
 
-        authorize_uri = self.make_authorize_uri(session['from'].bare, name, service, processings)
+        authorize_uri = self.make_authorize_uri(session['from'].bare, name, description, logo_url)
 
         form = self.xmpp['xep_0004'].make_form(ftype='result', title="Authorize URI")
 

@@ -11,49 +11,36 @@
     </div>
 {% endif %}
 
+<div class="row mt-5 mb-5">
+    <div class="col my-auto"><img src="./assets/enedis-logo.png" width="94"/></div>
+    <div class="col my-auto"><img src="./assets/arrow.png" width="72"/></div>
+    <div class="col my-auto" style="display:table-cell;"><img src="./assets/proxy-host-logo.png" width="129"/></div>
+    <div class="col my-auto" style="display:table-cell;"><img src="./assets/arrow.png" width="72"/></div>
+    <div class="col my-auto" style="display:table-cell;">
+    	{% if description.logo_url %}
+    		<img src="{{ description.logo_url }}" width="100"/>
+    	{% else %}
+    		<h4>{{ description.name }}</h4>
+    	{% endif %}
+    </div>
+</div>
+
 <h4>{{ description.name }} souhaite accéder à vos données de consommation</h4>
 
-{% if description.service %}
-	{% if '<' in description.service %}
-		{{ description.service | safe }}
-	{% else %}
-		{% for line in description.service %}
-			<p>{{ line }}</p>
-		{% endfor %}
-	{% endif %}
-{% endif %}
+{{ description.service | safe }}
 
-<h4>Autoriser Enedis à nous transmettre vos données</h4>
-
-<p>Enedis gère le réseau d’électricité jusqu’au compteur d’électricité.</p>
-<p>En cliquant sur ce bouton, vous accéderez à votre espace client Enedis où vous pourrez autoriser Enedis à nous transmettre vos données de consommation.</p>
-<p><a href="{{ authorize_uri }}"><img src="https://datahub-enedis.fr/wp-content/uploads/2018/11/azure.png" class="rounded" width="141"/></a></p>
-
-<!--h4>Données vous concernant</h4>
+<h4>Autoriser Enedis à transmettre vos données</h4>
 
 <ul>
-	<li>Votre consomation d’électricité quotidienne</li>
-	<li>Votre consomation d’électricité par demi-heure</li>
-	<li>Votre puissance maximale de d’électricité quotidienne</li>
-</ul-->
+    <li>
+        <strong>ALOEN</strong>, l’agence locale de l’environnement et de l’énergie de Bretagne Sud, est un tiers de confiance mandaté par <strong>{{ description.name }}</strong> pour collecter ces données.
+    </li>
+    <li>
+        <strong>Enedis</strong> gère le réseau d’électricité jusqu’au compteur d’électricité.
+    </li>
+</ul>
 
-<!--h4>Traitement sur les données</h4>
+<p>En cliquant sur ce bouton, vous accéderez à votre espace client Enedis où vous pourrez autoriser Enedis à transmettre vos données de consommation.</p>
+<p style="margin-top:40px; text-align: center;"><a href="{{ authorize_uri }}"><img src="./assets/enedis-button-blue.png" class="rounded" width="200"/></a></p>
 
-{% if description.processings %}
-	{% if '<' in description.processings %}
-		{{ description.processings | safe }}
-	{% else %}
-		<ul>
-		{% for line in description.processings %}
-			<li>{{ line }}</li>
-		{% endfor %}
-		</ul>
-	{% endif %}
-{% endif %}
-
-<h4>Sous-traitants</h4>
-
-ALOEN, l'agence locale de l'énergie de Bretagne Sud collectera ces données auprès d’Enedis pour les transmettre à {{ description.name }}. En savoir plus.
-
--->
 {% endblock %}
