@@ -58,11 +58,6 @@ class XmppInterface(ClientXMPP):
                                      name='Request authorize URI',
                                      handler=self.authorize_uri_handler.handle_request)
 
-        # TODO deprecated, replaced with get_load_curve
-        self['xep_0050'].add_command(node='get_consumption_load_curve',
-                                     name='Get consumption load curve',
-                                     handler=self.load_curve_handler.handle_request)
-
         self['xep_0050'].add_command(node='get_load_curve',
                                      name='Get load curve',
                                      handler=self.load_curve_handler.handle_request)
