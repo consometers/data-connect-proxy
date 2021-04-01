@@ -148,24 +148,29 @@ Ce type de fonctionnement est assez courant sur les services en ligne, il s’ag
 Par XMPP et la [XEP-0050](https://xmpp.org/extensions/xep-0050.html) , l’utilisateur du proxy (une application) configure une page Web hébergée par le proxy Data Connect. Cette page sera affichée au consommateur avant qu’il ne soit renvoyé sur espace client Enedis, elle doit décrire le service proposé par l’application et décrire la finalité des traitements des données de consommation.
 
 ```xml
-<iq xml:lang="fr" to="dataconnect-proxy@breizh-sen2.eu/proxy" from="…" type="set" id="abbca">
-  <command xmlns="http://jabber.org/protocol/commands" action="execute" node="get_authorize_uri">
-    <x xmlns="jabber:x:data" type="submit">
-      <field var="name" type="text-single">
-        <value>Elec Expert Demo</value>
-      </field>
-      <field var="service" type="text-multi">
-        <value>Nos experts analysent votre consommation d’électricité sur l’année précédente mesurée par votre compteur Linky.</value>
-        <value>Lors d’un rendez-vous téléphonique, nous vous ferons part de nos recommandations pour mieux maîtriser votre consommation.</value>
-      </field>
-      <field var="processings" type="text-multi">
-        <value>Analyse votre consommation d’électricité</value>
-        <value>Affichage de graphiques</value>
-      </field>
-    </x>
-  </command>
+<iq xml:lang="fr" to="dataconnect-proxy-dev@breizh-sen2.eu/proxy" from="…" type="set" id="abbca">
+   <command xmlns="http://jabber.org/protoc ol/commands" node="get_authorize_uri" action="execute">
+      <x xmlns="jabber:x:data" type="submit">
+         <field var="name" type="text-single">
+            <value>Elec Expert Demo</value>
+         </field>
+         <field var="logo_url" type="text-single">
+            <value>https://example.fr/logo.png</value>
+         </field>
+         <field var="description" type="text-multi">
+            <value>&lt;p&gt;</value>
+            <value>Nos experts analysent votre consommation d’électricité sur l’année précédente mesurée par votre compteur Linky.&lt;br/&gt;</value>
+            <value>Lors d’un rendez-vous téléphonique, nous vous ferons part de nos recommandations pour mieux maîtriser votre consommation.</value>
+            <value>&lt;/p&gt;</value>
+            <value>&lt;p&gt;Retrouvez plus de détails sur notre &lt;a href="#"&gt;politique de confidentialité&lt;/a&gt;.&lt;/p&gt;</value>
+         </field>
+      </x>
+   </command>
 </iq>
 ```
+
+- `description` est donné au format HTML
+- `logo_url` est optionel. Il doit être renseigné par une URL, obligatoirement en https. Il sera affiché avec une largeur de 100 px.
 
 Le serveur répond avec l’URL correspondant à la page générée.
 
