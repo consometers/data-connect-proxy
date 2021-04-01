@@ -1,3 +1,22 @@
+TODO check what happens
+
+Consommation / production
+- logique pour Cédric
+
+Temps début / fin de période
+- début, comme ça dans data connect et Viriya, semble arbitraire
+- pas de pour ou contre, gardé comme implémenté
+
+Intervalle, iso comme retourné par Enedis
+- plus compact que secondes
+- permet aussi de descendre sous la seconde (PT0.05s)
+- nom de la balise
+- spécifié pour chaque mesure? pas possible senml, surement des cas d’usages
+
+## Use adhoc commands to expose
+
+## Use SENML 
+
 ## Expose application specific errors
 
 - Date: 2020-09-14
@@ -52,3 +71,31 @@ Return the error in an iq :
 
 - Check exemples of errors handled in ad-hoc commands
 - Localize error message?
+
+## Use XMPP auth mechanisms
+
+CONS
+
+## Represent sensor measurements
+
+- Date: 2019-04-23
+- Id: <a name="use-senml">use-senml</a>
+- Status: proposed
+- Deciders: Gautier Husson, Gregory Elleouet
+
+Use SENML to format raw data
+
+https://tools.ietf.org/html/rfc8428
+
+See [Rapport d’évaluation des formalismes de données](https://github.com/consometers/sen1-poc-docs/blob/master/Rapport_choix_formalisme.pdf) (fr).
+
+## Use XMPP
+
+- Date: 2019-03-19
+- Id: <a name="use-senml">use-xmpp</a>
+- Status: proposed
+- Deciders: Gautier Husson, Gregory Elleouet
+
+Use XMPP
+
+See [Rapport d’évaluation des protocoles d’échange de données fédéré](https://github.com/consometers/sen1-poc-docs/blob/master/Rapport-choix-protocole.pdf) (fr)
