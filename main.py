@@ -11,7 +11,6 @@ import unittest
 import threading
 import datetime as dt
 
-import config
 from dataconnect import DataConnect, DataConnectError
 from xmpp_interface import XmppInterface
 
@@ -245,14 +244,30 @@ class DataConnectProxy:
 
 if __name__ == '__main__':
 
-    data_connect = DataConnect(config.DATACONNECT_ID,
-                               config.DATACONNECT_SECRET,
-                               config.DATACONNECT_REDIRECT_URI,
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('conf', help="Configuration file (typically private/*.conf.json)")
+    parser.add_argument('--unittest', action='store_true', help="Run unit tests (for this file only)")
+    args = parser.parse_args()
+
+    if args.unittest:
+        unittest.main(argv=sys.argv[:1])
+        exit()
+
+    with open(args.conf, 'r') as f:
+        CONF = json.load(f)['proxy']
+
+
+    data_connect = DataConnect(CONF['data_connect']['production']['app_id'],
+                               CONF['data_connect']['production']['app_secret'],
+                               CONF['data_connect']['production']['redirect_uri'],
                                sandbox=False)
 
-    data_connect_sandbox = DataConnect(config.DATACONNECT_SANDBOX_ID,
-                                       config.DATACONNECT_SANDBOX_SECRET,
-                                       config.DATACONNECT_SANDBOX_REDIRECT_URI,
+    data_connect_sandbox = DataConnect(CONF['data_connect']['sandbox']['app_id'],
+                                       CONF['data_connect']['sandbox']['app_secret'],
+                                       CONF['data_connect']['sandbox']['redirect_uri'],
                                        sandbox=True)
 
     proxy = DataConnectProxy(data_connect, data_connect_sandbox, CONF['web_interface']['base_uri'])
@@ -263,7 +278,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)-8s %(message)s')
 
-    xmpp = XmppInterface(config.XMPP_JID, config.XMPP_PASSWORD,
+    xmpp = XmppInterface(CONF['xmpp']['full_jid'], CONF['xmpp']['password'],
                          proxy.register_authorize_description,
                          proxy.get_load_curve,
                          proxy.get_daily)

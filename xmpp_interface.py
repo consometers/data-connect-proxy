@@ -9,7 +9,6 @@ from slixmpp import ClientXMPP
 from slixmpp.exceptions import XMPPError
 from slixmpp.xmlstream import ElementBase, ET, register_stanza_plugin
 
-import config
 from dataconnect import DataConnect, DataConnectError
 import json
 

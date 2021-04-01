@@ -1,0 +1,29 @@
+{
+    "client": {
+        "xmpp": {
+            "bare_jid": "user@example.com",
+            "password": "…"
+        }
+    },
+    "proxy": {
+        "xmpp": {
+            "full_jid": "dataconnect-proxy@breizh-sen2.eu/proxy",
+            "password": "…"
+        },
+        "web_interface": {
+            "base_uri": "https://srv5.breizh-sen2.eu/dataconnect-proxy"
+        },
+        "data_connect": {
+            "production": {
+                "app_id" : "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                "app_secret": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                "redirect_uri": "https://srv5.breizh-sen2.eu/dataconnect-proxy/redirect"
+            },
+            "sandbox": {
+                "app_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                "app_secret": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                "redirect_uri": "https://srv5.breizh-sen2.eu/dataconnect-proxy/redirect"
+            }
+        }
+    }
+}

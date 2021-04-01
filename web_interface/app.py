@@ -11,7 +11,6 @@ from aiohttp import web
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from dataconnect import DataConnect, DataConnectError, TEST_CLIENTS
-import config
 
 MY_DIR = os.path.dirname(os.path.realpath(__file__))
 
