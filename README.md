@@ -89,17 +89,15 @@ Si l’utilisateur est autorisé à accéder à ces données, le serveur les ren
     </x>
     <quoalise xmlns="urn:quoalise:0">
       <data>
-        <meta>
-          <device type="electricity-meter">
-            <identifier authority="enedis" type="prm" value="10284856584123" />
-          </device>
-          <measurement>
-            <physical quantity="power" type="electrical" unit="W" />
-            <business graph="load-profile" direction="production" />
-            <aggregate type="average" />
-            <sampling interval="1800" />
-          </measurement>
-        </meta>
+        <device type="electricity-meter">
+          <identifier authority="enedis" type="prm" value="10284856584123" />
+        </device>
+        <measurement>
+          <physical quantity="power" type="electrical" unit="W" />
+          <business graph="load-profile" direction="production" />
+          <aggregate type="average" />
+          <sampling interval="1800" />
+        </measurement>
         <sensml xmlns="urn:ietf:params:xml:ns:senml">
           <senml bn="urn:dev:prm:10284856584123_production_load" bt="1600041600" t="0" v="245" bu="W" />
           <senml t="1800" v="420" />
